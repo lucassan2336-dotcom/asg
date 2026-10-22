@@ -30,7 +30,7 @@ function Index() {
             </div>
           </div>
           <div className="flex justify-center">
-            <img src={logo.url} alt="Logo da A.S.G. — capivara de boné e óculos sobre um skate" className="w-64 rotate-[-4deg] drop-shadow-[8px_8px_0_var(--ink)] md:w-96" />
+            <img src={logo.url} alt="Logo da A.S.G. — capivara de boné e óculos sobre um skate" className="w-64 rotate-[-4deg] rounded-full bg-card shadow-stamp md:w-96" />
           </div>
         </div>
       </section>
