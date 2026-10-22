@@ -97,3 +97,44 @@
 @utility ring-seal {
   box-shadow: 0 0 0 3px var(--cream), 0 0 0 6px var(--ink);
 }
+@utility btn-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid var(--ink);
+  background: var(--capy);
+  color: var(--cream);
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius);
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-stamp-sm);
+  transition: transform .12s, box-shadow .12s;
+  &:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow-stamp); }
+}
+@utility btn-ghost-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid var(--ink);
+  background: var(--cream);
+  color: var(--ink);
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius);
+  font-family: var(--font-condensed);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-stamp-sm);
+  &:hover { background: var(--muted); }
+}
+@utility field {
+  width: 100%;
+  border: 2px solid var(--ink);
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+  &:focus { outline: 2px solid var(--capy); outline-offset: 2px; }
+}
