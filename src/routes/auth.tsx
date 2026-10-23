@@ -6,11 +6,11 @@ import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { safeRedirect, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 
-type AuthSearch = { redirect?: string };
+type AuthSearch = { redirect?: string | undefined };
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
   }),
   head: () => seo("Entrar", "Acesse sua conta da A.S.G. ou crie uma nova para solicitar associação."),
   component: AuthPage,
