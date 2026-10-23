@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ApoiadoresRouteImport } from './routes/apoiadores'
 import { Route as AssocieSeRouteImport } from './routes/associe-se'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContatoRouteImport } from './routes/contato'
 import { Route as EventosRouteImport } from './routes/eventos'
 import { Route as GaleriaRouteImport } from './routes/galeria'
@@ -19,10 +21,16 @@ import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as ProjetosRouteImport } from './routes/projetos'
 import { Route as ResultadosRouteImport } from './routes/resultados'
 import { Route as SobreRouteImport } from './routes/sobre'
+import { Route as AuthenticatedAreaRouteImport } from './routes/_authenticated/area'
+import { Route as AuthenticatedDiretoriaRouteImport } from './routes/_authenticated/diretoria'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApoiadoresRoute = ApoiadoresRouteImport.update({
@@ -33,6 +41,11 @@ const ApoiadoresRoute = ApoiadoresRouteImport.update({
 const AssocieSeRoute = AssocieSeRouteImport.update({
   id: '/associe-se',
   path: '/associe-se',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatoRoute = ContatoRouteImport.update({
@@ -70,11 +83,22 @@ const SobreRoute = SobreRouteImport.update({
   path: '/sobre',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAreaRoute = AuthenticatedAreaRouteImport.update({
+  id: '/area',
+  path: '/area',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDiretoriaRoute = AuthenticatedDiretoriaRouteImport.update({
+  id: '/diretoria',
+  path: '/diretoria',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apoiadores': typeof ApoiadoresRoute
   '/associe-se': typeof AssocieSeRoute
+  '/auth': typeof AuthRoute
   '/contato': typeof ContatoRoute
   '/eventos': typeof EventosRoute
   '/galeria': typeof GaleriaRoute
@@ -82,11 +106,14 @@ export interface FileRoutesByFullPath {
   '/projetos': typeof ProjetosRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/area': typeof AuthenticatedAreaRoute
+  '/diretoria': typeof AuthenticatedDiretoriaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apoiadores': typeof ApoiadoresRoute
   '/associe-se': typeof AssocieSeRoute
+  '/auth': typeof AuthRoute
   '/contato': typeof ContatoRoute
   '/eventos': typeof EventosRoute
   '/galeria': typeof GaleriaRoute
@@ -94,12 +121,16 @@ export interface FileRoutesByTo {
   '/projetos': typeof ProjetosRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/area': typeof AuthenticatedAreaRoute
+  '/diretoria': typeof AuthenticatedDiretoriaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/apoiadores': typeof ApoiadoresRoute
   '/associe-se': typeof AssocieSeRoute
+  '/auth': typeof AuthRoute
   '/contato': typeof ContatoRoute
   '/eventos': typeof EventosRoute
   '/galeria': typeof GaleriaRoute
@@ -107,6 +138,8 @@ export interface FileRoutesById {
   '/projetos': typeof ProjetosRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/_authenticated/area': typeof AuthenticatedAreaRoute
+  '/_authenticated/diretoria': typeof AuthenticatedDiretoriaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -114,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apoiadores'
     | '/associe-se'
+    | '/auth'
     | '/contato'
     | '/eventos'
     | '/galeria'
@@ -121,11 +155,14 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/resultados'
     | '/sobre'
+    | '/area'
+    | '/diretoria'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/apoiadores'
     | '/associe-se'
+    | '/auth'
     | '/contato'
     | '/eventos'
     | '/galeria'
@@ -133,11 +170,15 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/resultados'
     | '/sobre'
+    | '/area'
+    | '/diretoria'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/apoiadores'
     | '/associe-se'
+    | '/auth'
     | '/contato'
     | '/eventos'
     | '/galeria'
@@ -145,12 +186,16 @@ export interface FileRouteTypes {
     | '/projetos'
     | '/resultados'
     | '/sobre'
+    | '/_authenticated/area'
+    | '/_authenticated/diretoria'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ApoiadoresRoute: typeof ApoiadoresRoute
   AssocieSeRoute: typeof AssocieSeRoute
+  AuthRoute: typeof AuthRoute
   ContatoRoute: typeof ContatoRoute
   EventosRoute: typeof EventosRoute
   GaleriaRoute: typeof GaleriaRoute
@@ -169,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/apoiadores': {
       id: '/apoiadores'
       path: '/apoiadores'
@@ -181,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/associe-se'
       fullPath: '/associe-se'
       preLoaderRoute: typeof AssocieSeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contato': {
@@ -232,13 +291,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SobreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/area': {
+      id: '/_authenticated/area'
+      path: '/area'
+      fullPath: '/area'
+      preLoaderRoute: typeof AuthenticatedAreaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/diretoria': {
+      id: '/_authenticated/diretoria'
+      path: '/diretoria'
+      fullPath: '/diretoria'
+      preLoaderRoute: typeof AuthenticatedDiretoriaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAreaRoute: typeof AuthenticatedAreaRoute
+  AuthenticatedDiretoriaRoute: typeof AuthenticatedDiretoriaRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAreaRoute: AuthenticatedAreaRoute,
+  AuthenticatedDiretoriaRoute: AuthenticatedDiretoriaRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ApoiadoresRoute: ApoiadoresRoute,
   AssocieSeRoute: AssocieSeRoute,
+  AuthRoute: AuthRoute,
   ContatoRoute: ContatoRoute,
   EventosRoute: EventosRoute,
   GaleriaRoute: GaleriaRoute,
