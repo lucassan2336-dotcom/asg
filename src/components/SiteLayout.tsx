@@ -20,6 +20,19 @@ export const NAV = [
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { user } = useSession();
+  const { roles } = useMyRoles(user?.id);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    setOpen(false);
+    navigate({ to: "/auth", replace: true });
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
@@ -40,7 +53,20 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Link to="/associe-se" className="btn-stamp hidden sm:inline-flex">Associe-se</Link>
+          {user ? (
+            <>
+              {roles.includes("diretoria") && (
+                <Link to="/diretoria" className="btn-ghost-stamp hidden sm:inline-flex">Diretoria</Link>
+              )}
+              <Link to="/area" className="btn-stamp hidden sm:inline-flex">Minha área</Link>
+              <button onClick={handleSignOut} className="btn-ghost-stamp hidden sm:inline-flex">Sair</button>
+            </>
+          ) : (
+            <>
+              <Link to="/auth" className="btn-ghost-stamp hidden sm:inline-flex">Entrar</Link>
+              <Link to="/associe-se" className="btn-stamp hidden sm:inline-flex">Associe-se</Link>
+            </>
+          )}
           <button aria-label="Menu" className="lg:hidden p-2" onClick={() => setOpen(!open)}>
             {open ? <X /> : <Menu />}
           </button>
@@ -60,10 +86,31 @@ export function Header() {
               {n.label}
             </Link>
           ))}
-          <div className="p-4">
-            <Link to="/associe-se" onClick={() => setOpen(false)} className="btn-stamp w-full justify-center">
-              Quero me associar
-            </Link>
+          <div className="space-y-2 p-4">
+            {user ? (
+              <>
+                {roles.includes("diretoria") && (
+                  <Link to="/diretoria" onClick={() => setOpen(false)} className="btn-ghost-stamp w-full justify-center">
+                    Painel da diretoria
+                  </Link>
+                )}
+                <Link to="/area" onClick={() => setOpen(false)} className="btn-stamp w-full justify-center">
+                  Minha área
+                </Link>
+                <button onClick={handleSignOut} className="btn-ghost-stamp w-full justify-center">
+                  Sair
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth" onClick={() => setOpen(false)} className="btn-ghost-stamp w-full justify-center">
+                  Entrar
+                </Link>
+                <Link to="/associe-se" onClick={() => setOpen(false)} className="btn-stamp w-full justify-center">
+                  Quero me associar
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       )}
