@@ -1,6 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Menu, X, Star } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useMyRoles, useSession } from "@/lib/auth";
 import logo from "@/assets/logo-asg.png.asset.json";
 
 export const NAV = [
