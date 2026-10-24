@@ -91,6 +91,16 @@ function AuthPage() {
                 Voltar para entrar
               </button>
             </div>
+          ) : resetSent ? (
+            <div className="py-6 text-center">
+              <h2 className="text-2xl">Link enviado</h2>
+              <p className="mt-2 text-muted-foreground">
+                Se existir uma conta com <strong>{email}</strong>, você receberá um link para definir uma nova senha.
+              </p>
+              <button className="btn-ghost-stamp mt-6" onClick={() => { setResetSent(false); setMode("entrar"); }}>
+                Voltar para entrar
+              </button>
+            </div>
           ) : (
             <>
               <div className="mb-6 grid grid-cols-2 gap-2">
