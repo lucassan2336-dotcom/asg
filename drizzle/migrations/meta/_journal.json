@@ -8,6 +8,13 @@
       "when": 1792650708145,
       "tag": "0000_asg_core_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792820461408,
+      "tag": "0001_restrict_security_definer_execute",
+      "breakpoints": true
     }
   ]
 }
