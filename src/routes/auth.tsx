@@ -68,10 +68,15 @@ function AuthPage() {
 
   return (
     <>
-      <PageHero eyebrow="Conta" title={mode === "entrar" ? "Entrar" : "Criar conta"}>
+      <PageHero
+        eyebrow="Conta"
+        title={mode === "entrar" ? "Entrar" : mode === "criar" ? "Criar conta" : "Recuperar senha"}
+      >
         {mode === "entrar"
           ? "Acesse a área do associado e acompanhe sua solicitação."
-          : "Crie sua conta para enviar a solicitação de associação."}
+          : mode === "criar"
+            ? "Crie sua conta para enviar a solicitação de associação."
+            : "Informe seu e-mail para receber o link de redefinição de senha."}
       </PageHero>
       <Section className="flex justify-center">
         <Card className="w-full max-w-md">
