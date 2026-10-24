@@ -20,12 +20,13 @@ function AuthPage() {
   const { redirect: redirectTarget } = Route.useSearch();
   const navigate = useNavigate();
   const { user, loading } = useSession();
-  const [mode, setMode] = useState<"entrar" | "criar">("entrar");
+  const [mode, setMode] = useState<"entrar" | "criar" | "recuperar">("entrar");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (!loading && user) {
     navigate({ to: safeRedirect(redirectTarget) });
