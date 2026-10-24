@@ -37,7 +37,13 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "criar") {
+      if (mode === "recuperar") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setResetSent(true);
+      } else if (mode === "criar") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
