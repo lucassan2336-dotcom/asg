@@ -22,6 +22,13 @@
       "when": 1792820482356,
       "tag": "0002_revoke_public_execute_on_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792820759911,
+      "tag": "0003_comprovantes_storage_policies",
+      "breakpoints": true
     }
   ]
 }
