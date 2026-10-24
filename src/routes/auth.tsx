@@ -20,12 +20,13 @@ function AuthPage() {
   const { redirect: redirectTarget } = Route.useSearch();
   const navigate = useNavigate();
   const { user, loading } = useSession();
-  const [mode, setMode] = useState<"entrar" | "criar">("entrar");
+  const [mode, setMode] = useState<"entrar" | "criar" | "recuperar">("entrar");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (!loading && user) {
     navigate({ to: safeRedirect(redirectTarget) });
@@ -36,7 +37,13 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      if (mode === "criar") {
+      if (mode === "recuperar") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setResetSent(true);
+      } else if (mode === "criar") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -61,10 +68,15 @@ function AuthPage() {
 
   return (
     <>
-      <PageHero eyebrow="Conta" title={mode === "entrar" ? "Entrar" : "Criar conta"}>
+      <PageHero
+        eyebrow="Conta"
+        title={mode === "entrar" ? "Entrar" : mode === "criar" ? "Criar conta" : "Recuperar senha"}
+      >
         {mode === "entrar"
           ? "Acesse a área do associado e acompanhe sua solicitação."
-          : "Crie sua conta para enviar a solicitação de associação."}
+          : mode === "criar"
+            ? "Crie sua conta para enviar a solicitação de associação."
+            : "Informe seu e-mail para receber o link de redefinição de senha."}
       </PageHero>
       <Section className="flex justify-center">
         <Card className="w-full max-w-md">
@@ -76,6 +88,16 @@ function AuthPage() {
                 depois entre aqui.
               </p>
               <button className="btn-ghost-stamp mt-6" onClick={() => { setConfirmSent(false); setMode("entrar"); }}>
+                Voltar para entrar
+              </button>
+            </div>
+          ) : resetSent ? (
+            <div className="py-6 text-center">
+              <h2 className="text-2xl">Link enviado</h2>
+              <p className="mt-2 text-muted-foreground">
+                Se existir uma conta com <strong>{email}</strong>, você receberá um link para definir uma nova senha.
+              </p>
+              <button className="btn-ghost-stamp mt-6" onClick={() => { setResetSent(false); setMode("entrar"); }}>
                 Voltar para entrar
               </button>
             </div>
