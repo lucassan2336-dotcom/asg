@@ -103,20 +103,22 @@ function AuthPage() {
             </div>
           ) : (
             <>
-              <div className="mb-6 grid grid-cols-2 gap-2">
-                <button
-                  className={mode === "entrar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
-                  onClick={() => setMode("entrar")}
-                >
-                  Entrar
-                </button>
-                <button
-                  className={mode === "criar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
-                  onClick={() => setMode("criar")}
-                >
-                  Criar conta
-                </button>
-              </div>
+              {mode !== "recuperar" && (
+                <div className="mb-6 grid grid-cols-2 gap-2">
+                  <button
+                    className={mode === "entrar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    onClick={() => setMode("entrar")}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    className={mode === "criar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    onClick={() => setMode("criar")}
+                  >
+                    Criar conta
+                  </button>
+                </div>
+              )}
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {mode === "criar" && (
                   <label className="block">
