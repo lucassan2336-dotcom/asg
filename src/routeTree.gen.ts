@@ -19,6 +19,7 @@ import { Route as EventosRouteImport } from './routes/eventos'
 import { Route as GaleriaRouteImport } from './routes/galeria'
 import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as ProjetosRouteImport } from './routes/projetos'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResultadosRouteImport } from './routes/resultados'
 import { Route as SobreRouteImport } from './routes/sobre'
 import { Route as AuthenticatedAreaRouteImport } from './routes/_authenticated/area'
@@ -73,6 +74,11 @@ const ProjetosRoute = ProjetosRouteImport.update({
   path: '/projetos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResultadosRoute = ResultadosRouteImport.update({
   id: '/resultados',
   path: '/resultados',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/galeria': typeof GaleriaRoute
   '/noticias': typeof NoticiasRoute
   '/projetos': typeof ProjetosRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
   '/area': typeof AuthenticatedAreaRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/galeria': typeof GaleriaRoute
   '/noticias': typeof NoticiasRoute
   '/projetos': typeof ProjetosRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
   '/area': typeof AuthenticatedAreaRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/galeria': typeof GaleriaRoute
   '/noticias': typeof NoticiasRoute
   '/projetos': typeof ProjetosRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
   '/_authenticated/area': typeof AuthenticatedAreaRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/galeria'
     | '/noticias'
     | '/projetos'
+    | '/reset-password'
     | '/resultados'
     | '/sobre'
     | '/area'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/galeria'
     | '/noticias'
     | '/projetos'
+    | '/reset-password'
     | '/resultados'
     | '/sobre'
     | '/area'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/galeria'
     | '/noticias'
     | '/projetos'
+    | '/reset-password'
     | '/resultados'
     | '/sobre'
     | '/_authenticated/area'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   GaleriaRoute: typeof GaleriaRoute
   NoticiasRoute: typeof NoticiasRoute
   ProjetosRoute: typeof ProjetosRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ResultadosRoute: typeof ResultadosRoute
   SobreRoute: typeof SobreRoute
 }
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjetosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resultados': {
       id: '/resultados'
       path: '/resultados'
@@ -332,6 +352,7 @@ const rootRouteChildren: RootRouteChildren = {
   GaleriaRoute: GaleriaRoute,
   NoticiasRoute: NoticiasRoute,
   ProjetosRoute: ProjetosRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ResultadosRoute: ResultadosRoute,
   SobreRoute: SobreRoute,
 }

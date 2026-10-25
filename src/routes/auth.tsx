@@ -103,20 +103,22 @@ function AuthPage() {
             </div>
           ) : (
             <>
-              <div className="mb-6 grid grid-cols-2 gap-2">
-                <button
-                  className={mode === "entrar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
-                  onClick={() => setMode("entrar")}
-                >
-                  Entrar
-                </button>
-                <button
-                  className={mode === "criar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
-                  onClick={() => setMode("criar")}
-                >
-                  Criar conta
-                </button>
-              </div>
+              {mode !== "recuperar" && (
+                <div className="mb-6 grid grid-cols-2 gap-2">
+                  <button
+                    className={mode === "entrar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    onClick={() => setMode("entrar")}
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    className={mode === "criar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    onClick={() => setMode("criar")}
+                  >
+                    Criar conta
+                  </button>
+                </div>
+              )}
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {mode === "criar" && (
                   <label className="block">
@@ -141,21 +143,47 @@ function AuthPage() {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </label>
-                <label className="block">
-                  <span className="eyebrow">Senha</span>
-                  <input
-                    required
-                    type="password"
-                    minLength={6}
-                    maxLength={72}
-                    className="field mt-1"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </label>
+                {mode !== "recuperar" && (
+                  <label className="block">
+                    <span className="eyebrow">Senha</span>
+                    <input
+                      required
+                      type="password"
+                      minLength={6}
+                      maxLength={72}
+                      className="field mt-1"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </label>
+                )}
                 <button disabled={busy} className="btn-stamp w-full justify-center disabled:opacity-60">
-                  {busy ? "Aguarde…" : mode === "entrar" ? "Entrar" : "Criar conta"}
+                  {busy
+                    ? "Aguarde…"
+                    : mode === "entrar"
+                      ? "Entrar"
+                      : mode === "criar"
+                        ? "Criar conta"
+                        : "Enviar link de redefinição"}
                 </button>
+                {mode === "entrar" && (
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-muted-foreground underline underline-offset-4"
+                    onClick={() => setMode("recuperar")}
+                  >
+                    Esqueci minha senha
+                  </button>
+                )}
+                {mode === "recuperar" && (
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-muted-foreground underline underline-offset-4"
+                    onClick={() => setMode("entrar")}
+                  >
+                    Voltar para entrar
+                  </button>
+                )}
               </form>
             </>
           )}
