@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 // Cliente anônimo, sem sessão: simula chamadas diretas à API por alguém
 // sem login tentando ler ou alterar dados privados.
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const url = import.meta.env["VITE_SUPABASE_URL"] as string;
+const anonKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string;
 const anon = createClient(url, anonKey, { auth: { persistSession: false } });
 
 describe("RLS: acesso anônimo direto à API", () => {
