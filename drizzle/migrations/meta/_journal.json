@@ -29,6 +29,13 @@
       "when": 1792820759911,
       "tag": "0003_comprovantes_storage_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792992123331,
+      "tag": "0004_membership_private_review_and_validation",
+      "breakpoints": true
     }
   ]
 }

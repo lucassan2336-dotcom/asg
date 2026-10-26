@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
+import { ApplicationStatusBadge } from "@/components/ApplicationStatus";
 
 export const Route = createFileRoute("/_authenticated/area")({
   head: () => seo("Área do associado", "Acompanhe sua associação, avisos internos e inscrições em eventos."),
@@ -52,7 +53,7 @@ function AreaPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("membership_applications")
-        .select("id, status, created_at, review_notes")
+        .select("id, status, created_at, reviewed_at")
         .eq("user_id", userId!)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -145,14 +146,13 @@ function AreaPage() {
             ) : application ? (
               <>
                 <p className="flex items-center gap-3">
-                  Solicitação: <StatusChip value={application.status} />
+                  Solicitação: <ApplicationStatusBadge status={application.status} />
                 </p>
                 {application.status === "pendente" && (
                   <p className="text-sm text-muted-foreground">A diretoria ainda está analisando seu pedido.</p>
                 )}
-                {application.status === "rejeitada" && application.review_notes && (
-                  <p className="text-sm text-muted-foreground">Observação da diretoria: {application.review_notes}</p>
-                )}
+                {application.reviewed_at && <p className="text-sm text-muted-foreground">Analisada em {new Date(application.reviewed_at).toLocaleDateString("pt-BR")}</p>}
+                {application.status === "rejeitada" && <p className="text-sm text-muted-foreground">Seu pedido foi rejeitado. Entre em contato com a diretoria para solicitar reanálise.</p>}
               </>
             ) : (
               <>

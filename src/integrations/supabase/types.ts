@@ -305,6 +305,7 @@ export type Database = {
         Row: {
           birth_date: string
           created_at: string
+          email: string | null
           full_name: string
           id: string
           motivation: string | null
@@ -319,6 +320,7 @@ export type Database = {
         Insert: {
           birth_date: string
           created_at?: string
+          email?: string | null
           full_name: string
           id?: string
           motivation?: string | null
@@ -333,6 +335,7 @@ export type Database = {
         Update: {
           birth_date?: string
           created_at?: string
+          email?: string | null
           full_name?: string
           id?: string
           motivation?: string | null
@@ -345,6 +348,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      membership_review_notes: {
+        Row: {
+          application_id: string
+          author_id: string
+          created_at: string
+          id: string
+          note: string
+        }
+        Insert: {
+          application_id: string
+          author_id: string
+          created_at?: string
+          id?: string
+          note: string
+        }
+        Update: {
+          application_id?: string
+          author_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_review_notes_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "membership_applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       news_articles: {
         Row: {
@@ -480,6 +515,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      reopen_application: {
+        Args: { _application_id: string; _reason: string }
+        Returns: undefined
       }
       review_application: {
         Args: { _application_id: string; _approve: boolean; _notes?: string }

@@ -6,17 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
+import { Button } from "@/components/ui/button";
+import { ApplicationStatusBadge } from "@/components/ApplicationStatus";
+import { membershipSchema } from "@/lib/membership";
 
 export const Route = createFileRoute("/associe-se")({
   head: () => seo("Como se associar", "Solicite sua associação à A.S.G. Cada pedido é analisado pela diretoria."),
   component: AssocieSe,
 });
-
-const STATUS_LABEL: Record<string, string> = {
-  pendente: "Pendente",
-  aprovada: "Aprovada",
-  rejeitada: "Rejeitada",
-};
 
 function AssocieSe() {
   const { user, loading } = useSession();
@@ -26,18 +23,21 @@ function AssocieSe() {
   const [motivation, setMotivation] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  const { data: existing, refetch } = useQuery({
+  const { data: existing, refetch, isLoading: checking, error: lookupError } = useQuery({
     queryKey: ["my-application", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      if (!user) return null;
+      const { data, error } = await supabase
         .from("membership_applications")
-        .select("id, status")
-        .eq("user_id", user!.id)
+        .select("id, status, created_at, reviewed_at")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
   });
@@ -45,21 +45,24 @@ function AssocieSe() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    setFormError("");
+    const parsed = membershipSchema.safeParse({ full_name: fullName, email: user.email ?? "", phone, birth_date: birthDate, motivation });
+    if (!parsed.success) { setFormError(parsed.error.issues[0]?.message ?? "Revise os campos."); return; }
     setBusy(true);
-    const { error } = await supabase.from("membership_applications").insert({
-      user_id: user.id,
-      full_name: fullName.trim().slice(0, 100),
-      phone: phone.trim().slice(0, 20) || null,
-      birth_date: birthDate,
-      motivation: motivation.trim().slice(0, 500) || null,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error("Não foi possível enviar a solicitação. Tente novamente.");
-    } else {
+    try {
+      const { error } = await supabase.from("membership_applications").insert({
+        user_id: user.id, ...parsed.data, phone: parsed.data.phone || null, motivation: parsed.data.motivation || null,
+      });
+      if (error) {
+        if (error.code === "23505") { await refetch(); setFormError("Já existe uma solicitação para sua conta. Consulte sua situação."); }
+        else setFormError("Não foi possível enviar. Confira os dados e a confirmação do seu e-mail.");
+        return;
+      }
       setSent(true);
-      refetch();
-    }
+      await refetch();
+      toast.success("Solicitação recebida. Aguarde a análise da diretoria.");
+    } catch { setFormError("Não foi possível conectar. Tente novamente."); }
+    finally { setBusy(false); }
   }
 
   const steps = ["Crie sua conta", "Envie a solicitação", "A diretoria analisa", "Acesse a área do associado"];
@@ -81,7 +84,7 @@ function AssocieSe() {
           ))}
         </ol>
         <Card>
-          {loading ? (
+          {loading || checking ? (
             <p className="py-8 text-center text-muted-foreground">Carregando…</p>
           ) : !user ? (
             <div className="py-8 text-center">
@@ -93,15 +96,15 @@ function AssocieSe() {
                 Entrar ou criar conta
               </Link>
             </div>
-          ) : sent || existing ? (
+          ) : lookupError ? (<p role="alert">Não foi possível consultar sua solicitação. <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button></p>) : sent || existing ? (
             <div className="py-8 text-center">
               <h2 className="text-2xl">Solicitação registrada</h2>
               <p className="mt-2 text-muted-foreground">
                 Situação atual:{" "}
-                <strong className="uppercase">{STATUS_LABEL[(existing?.status ?? "pendente") as string]}</strong>
+                <ApplicationStatusBadge status={existing?.status ?? "pendente"} />
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                A diretoria analisa cada pedido. Acompanhe pela sua área.
+                {existing?.status === "rejeitada" ? "Seu pedido foi rejeitado. Para solicitar reanálise, entre em contato com a diretoria." : existing?.status === "aprovada" ? "Sua associação foi aprovada. Acesse sua área." : "Seu cadastro ainda precisa ser analisado. O envio não concede acesso como associado."}
               </p>
               <Link to="/area" className="btn-stamp mt-6 inline-flex">
                 Ir para a área do associado
@@ -114,7 +117,11 @@ function AssocieSe() {
                 <input required maxLength={100} className="field mt-1" value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </label>
               <label className="block">
-                <span className="eyebrow">Telefone</span>
+                <span className="eyebrow">E-mail da conta</span>
+                <input type="email" readOnly className="field mt-1" value={user.email ?? ""} />
+              </label>
+              <label className="block">
+                <span className="eyebrow">Telefone (opcional)</span>
                 <input type="tel" maxLength={20} className="field mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </label>
               <label className="block">
@@ -122,12 +129,13 @@ function AssocieSe() {
                 <input type="date" required className="field mt-1" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
               </label>
               <label className="block">
-                <span className="eyebrow">Por que quer se associar?</span>
+                <span className="eyebrow">Por que quer se associar? (opcional)</span>
                 <textarea maxLength={500} rows={3} className="field mt-1" value={motivation} onChange={(e) => setMotivation(e.target.value)} />
               </label>
-              <button disabled={busy} className="btn-stamp w-full justify-center disabled:opacity-60">
+              {formError && <p role="alert" className="text-destructive">{formError}</p>}
+              <Button disabled={busy} className="btn-stamp h-auto w-full justify-center">
                 {busy ? "Enviando…" : "Enviar solicitação"}
-              </button>
+              </Button>
             </form>
           )}
         </Card>
