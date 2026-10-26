@@ -54,7 +54,7 @@ export function ApplicationsPanel() {
     try {
       const { error } = decision.action === "reopen"
         ? await supabase.rpc("reopen_application", { _application_id: decision.application.id, _reason: cleanNote })
-        : await supabase.rpc("review_application", { _application_id: decision.application.id, _approve: decision.action === "approve", _notes: cleanNote || undefined });
+        : await supabase.rpc("review_application", { _application_id: decision.application.id, _approve: decision.action === "approve", _notes: cleanNote });
       if (error) { toast.error("Não foi possível concluir. Atualize a lista e confira se o pedido já foi analisado."); return; }
       toast.success(decision.action === "reopen" ? "Solicitação reaberta para análise." : "Decisão registrada.");
       setDecision(null);
