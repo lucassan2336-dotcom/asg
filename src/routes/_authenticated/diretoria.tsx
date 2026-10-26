@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { useMyRoles, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
+import { ApplicationsPanel } from "@/components/ApplicationsPanel";
 
 export const Route = createFileRoute("/_authenticated/diretoria")({
   head: () => seo("Painel da diretoria", "Análise de solicitações, avisos e eventos da A.S.G."),
@@ -70,98 +71,6 @@ function DiretoriaPage() {
         {tab === "eventos" && <EventsPanel />}
       </Section>
     </>
-  );
-}
-
-function ApplicationsPanel() {
-  const queryClient = useQueryClient();
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  const { data: applications } = useQuery({
-    queryKey: ["admin-applications"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("membership_applications")
-        .select("id, full_name, phone, birth_date, motivation, status, created_at")
-        .order("created_at", { ascending: false });
-      return data ?? [];
-    },
-  });
-
-  async function review(id: string, approve: boolean) {
-    setBusyId(id);
-    const { error } = await supabase.rpc("review_application", {
-      _application_id: id,
-      _approve: approve,
-      _notes: (notes[id] ?? "").slice(0, 500),
-    });
-    setBusyId(null);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(approve ? "Solicitação aprovada." : "Solicitação rejeitada.");
-      queryClient.invalidateQueries({ queryKey: ["admin-applications"] });
-    }
-  }
-
-  const pending = (applications ?? []).filter((a) => a.status === "pendente");
-  const reviewed = (applications ?? []).filter((a) => a.status !== "pendente");
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl">Pendentes ({pending.length})</h2>
-        {pending.length === 0 && <p className="mt-3 text-muted-foreground">Nenhuma solicitação aguardando análise.</p>}
-        <div className="mt-4 grid gap-4">
-          {pending.map((a) => (
-            <Card key={a.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-condensed text-xl font-bold uppercase">{a.full_name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Nascimento: {new Date(a.birth_date + "T00:00:00").toLocaleDateString("pt-BR")}
-                    {a.phone ? ` · ${a.phone}` : ""} · Enviada em {new Date(a.created_at).toLocaleDateString("pt-BR")}
-                  </p>
-                  {a.motivation && <p className="mt-2 text-sm">{a.motivation}</p>}
-                </div>
-              </div>
-              <textarea
-                maxLength={500}
-                rows={2}
-                placeholder="Observação (opcional, visível ao solicitante se rejeitada)"
-                className="field mt-3"
-                value={notes[a.id] ?? ""}
-                onChange={(e) => setNotes((n) => ({ ...n, [a.id]: e.target.value }))}
-              />
-              <div className="mt-3 flex gap-2">
-                <button disabled={busyId === a.id} onClick={() => review(a.id, true)} className="btn-stamp">
-                  Aprovar
-                </button>
-                <button disabled={busyId === a.id} onClick={() => review(a.id, false)} className="btn-ghost-stamp">
-                  Rejeitar
-                </button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-      {reviewed.length > 0 && (
-        <div>
-          <h2 className="text-2xl">Já analisadas</h2>
-          <ul className="mt-4 space-y-2 text-sm">
-            {reviewed.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 border-b border-border pb-2">
-                <span>{a.full_name}</span>
-                <span className="font-condensed font-bold uppercase text-muted-foreground">
-                  {a.status === "aprovada" ? "Aprovada" : "Rejeitada"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
   );
 }
 
