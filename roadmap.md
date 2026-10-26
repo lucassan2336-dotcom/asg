@@ -13,4 +13,4 @@
 - [x] Testes das regras de acesso + revisão de segurança do banco
 - [x] Teste de acesso anônimo direto à API (8 cenários bloqueados)
 - [x] Teste na tela do fluxo completo (cadastro → pedido → aprovação → associação ativa)
-- [ ] Passo para criar a primeira conta da diretoria (bloqueado: precisa de uma conta real criada pelo usuário)
+- [x] Primeira conta real da diretoria liberada e acesso ao painel verificado
