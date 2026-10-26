@@ -14,3 +14,6 @@
 - [x] Teste de acesso anônimo direto à API (8 cenários bloqueados)
 - [x] Teste na tela do fluxo completo (cadastro → pedido → aprovação → associação ativa)
 - [x] Primeira conta real da diretoria liberada e acesso ao painel verificado
+- [ ] Completar validação, privacidade das observações e controle de duplicidade da associação
+- [ ] Tabela da diretoria com detalhes, confirmação e reanálise justificada
+- [ ] Testar os três perfis sem aprovações persistentes nem envio de e-mails
