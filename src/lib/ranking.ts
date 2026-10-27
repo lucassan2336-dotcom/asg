@@ -692,7 +692,9 @@ export function useAdminManageSkaterProfile() {
       queryClient.invalidateQueries({ queryKey: ["active-skaters"] });
       queryClient.invalidateQueries({ queryKey: ["public-skater-profile"] });
       queryClient.invalidateQueries({ queryKey: ["my-account-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["diretoria-all-members"] });
+      queryClient.invalidateQueries({ queryKey: ["registered-users-diretoria"] });
     },
   });
 }

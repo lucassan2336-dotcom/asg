@@ -304,7 +304,9 @@ export function MembersRolesPanel() {
           modality,
           isActive: true,
         });
-        toast.success(`${targetUser.full_name} autorizado no Ranking ${modality.toUpperCase()}!`);
+        toast.success(
+          `Perfil de Skatista (${modality.toUpperCase()}) liberado com sucesso para ${targetUser.full_name}!`,
+        );
       }
     } catch {
       toast.error("Não foi possível alterar a modalidade competitiva deste cadastro.");
@@ -340,7 +342,7 @@ export function MembersRolesPanel() {
           <p className="text-xs text-muted-foreground mt-0.5">
             Selecione qualquer cadastro da plataforma — tanto <strong>Skatistas Locais</strong>{" "}
             quanto <strong>Associados</strong> — para atribuir ou revogar o cargo de{" "}
-            <strong>Diretoria</strong>, ou autorizar modalidade no{" "}
+            <strong>Diretoria</strong>, ou alterar e liberar a modalidade no{" "}
             <strong>Ranking (Street / Vert)</strong>.
           </p>
         </div>

@@ -449,7 +449,54 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
     expect(logs.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("15. Consistência da função client-side computeModalityRanking com o banco de dados", () => {
+  it("15. Diretoria altera modalidade de qualquer perfil e libera perfil de skatista mesmo criado como associado", async () => {
+    // associateUser2 foi criado originalmente como associado
+    await asUser(null);
+    const { rows: beforeCheck } = await db.query<{ user_id: string }>(
+      `SELECT user_id FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${associateUser2}'`,
+    );
+    expect(beforeCheck.length).toBe(0);
+
+    // Diretoria altera modalidade para Street e libera o perfil de skatista
+    await asUser(boardUser);
+    await db.query(
+      `SELECT public.admin_manage_skater_profile('${associateUser2}', 'street'::public.skate_modality, true)`,
+    );
+
+    // Verifica que profiles.account_type foi atualizado para skatista
+    const { rows: profileRows } = await db.query<{ account_type: string }>(
+      `SELECT account_type::text FROM public.profiles WHERE id = '${associateUser2}'`,
+    );
+    expect(profileRows[0]?.account_type).toBe("skatista");
+
+    // Verifica que skater_profiles agora existe e está ativo na modalidade Street
+    const { rows: skaterRows } = await db.query<{ is_active: boolean; modality: string }>(
+      `SELECT is_active, modality::text FROM public.skater_profiles WHERE user_id = '${associateUser2}'`,
+    );
+    expect(skaterRows[0]?.is_active).toBe(true);
+    expect(skaterRows[0]?.modality).toBe("street");
+
+    // Aparece agora no Ranking Street público
+    await asUser(null);
+    const { rows: rankingRows } = await db.query<{ user_id: string }>(
+      `SELECT user_id FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${associateUser2}'`,
+    );
+    expect(rankingRows.length).toBe(1);
+    expect(rankingRows[0]?.user_id).toBe(associateUser2);
+
+    // Diretoria altera a modalidade para Vert
+    await asUser(boardUser);
+    await db.query(
+      `SELECT public.admin_manage_skater_profile('${associateUser2}', 'vert'::public.skate_modality, true)`,
+    );
+    await asUser(null);
+    const { rows: vertRank } = await db.query<{ user_id: string }>(
+      `SELECT user_id FROM public.get_modality_ranking('vert'::public.skate_modality) WHERE user_id = '${associateUser2}'`,
+    );
+    expect(vertRank.some((r) => r.user_id === associateUser2)).toBe(true);
+  });
+
+  it("16. Consistência da função client-side computeModalityRanking com o banco de dados", () => {
     const sample: SkaterProfileRow[] = [
       {
         id: "1",

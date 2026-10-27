@@ -766,7 +766,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_skater_championship_history(uuid) TO anon, authenticated;
 
--- 12. Função Administrativa para a Diretoria gerenciar modalidade / perfil competitivo de um usuário
+-- 12. Função Administrativa para a Diretoria gerenciar modalidade / perfil competitivo de qualquer usuário
 CREATE OR REPLACE FUNCTION public.admin_manage_skater_profile(
   _target_user_id uuid,
   _modality public.skate_modality,
@@ -789,25 +789,53 @@ BEGIN
   END IF;
 
   SELECT
-    coalesce(nullif(btrim(p.full_name), ''), split_part(coalesce(u.email::text, 'Skatista'), '@', 1)),
-    p.avatar_url,
-    p.age
+    coalesce(nullif(btrim(p.full_name), ''), nullif(btrim(ap.full_name), ''), split_part(coalesce(u.email::text, 'Skatista'), '@', 1)),
+    coalesce(p.avatar_url, ap.avatar_url),
+    coalesce(p.age, ap.age)
   INTO v_name, v_avatar, v_age
   FROM auth.users u
   LEFT JOIN public.profiles p ON p.id = u.id
+  LEFT JOIN public.associate_profiles ap ON ap.user_id = u.id
   WHERE u.id = _target_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Usuário não encontrado.' USING ERRCODE = 'P0002';
   END IF;
 
-  INSERT INTO public.skater_profiles (user_id, full_name, avatar_url, age, modality, is_active)
-  VALUES (_target_user_id, v_name, v_avatar, v_age, _modality, _is_active)
-  ON CONFLICT (user_id) DO UPDATE
-    SET modality = EXCLUDED.modality,
-        is_active = EXCLUDED.is_active,
+  IF _is_active THEN
+    -- Atualiza tipo de conta em profiles liberando o perfil de skatista
+    UPDATE public.profiles
+    SET account_type = 'skatista'::public.account_kind,
         updated_at = now()
-  RETURNING id INTO v_skater_id;
+    WHERE id = _target_user_id;
+
+    INSERT INTO public.skater_profiles (user_id, full_name, avatar_url, age, modality, is_active)
+    VALUES (_target_user_id, v_name, v_avatar, v_age, _modality, true)
+    ON CONFLICT (user_id) DO UPDATE
+      SET modality = EXCLUDED.modality,
+          is_active = true,
+          full_name = coalesce(nullif(btrim(public.skater_profiles.full_name), ''), EXCLUDED.full_name),
+          avatar_url = coalesce(public.skater_profiles.avatar_url, EXCLUDED.avatar_url),
+          age = coalesce(public.skater_profiles.age, EXCLUDED.age),
+          updated_at = now()
+    RETURNING id INTO v_skater_id;
+  ELSE
+    -- Retorna o tipo de conta para associado (fora do ranking competitivo)
+    UPDATE public.profiles
+    SET account_type = 'associado'::public.account_kind,
+        updated_at = now()
+    WHERE id = _target_user_id;
+
+    UPDATE public.skater_profiles
+    SET is_active = false,
+        updated_at = now()
+    WHERE user_id = _target_user_id
+    RETURNING id INTO v_skater_id;
+
+    IF v_skater_id IS NULL THEN
+      v_skater_id := gen_random_uuid();
+    END IF;
+  END IF;
 
   PERFORM public.recalculate_all_skater_rankings();
 
@@ -818,7 +846,8 @@ BEGIN
     jsonb_build_object(
       'target_user_id', _target_user_id,
       'modality', _modality,
-      'is_active', _is_active
+      'is_active', _is_active,
+      'account_type_liberado', CASE WHEN _is_active THEN 'skatista' ELSE 'associado' END
     )
   );
 
