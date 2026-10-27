@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   PlusCircle,
   MinusCircle,
+  Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import type { Database } from "@/integrations/supabase/types";
+import { useAdminManageSkaterProfile, type SkateModality } from "@/lib/ranking";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -102,6 +104,7 @@ export async function updateUserRole(
 export function MembersRolesPanel() {
   const { user: currentUser } = useSession();
   const queryClient = useQueryClient();
+  const manageSkaterMutation = useAdminManageSkaterProfile();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"todos" | "diretoria" | "associado" | "sem_funcao">(
     "todos",
@@ -109,6 +112,25 @@ export function MembersRolesPanel() {
   const [pendingAction, setPendingAction] = useState<RoleChangeAction | null>(null);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const {
+    data: skaterProfilesMap = new Map<string, { modality: SkateModality; is_active: boolean }>(),
+  } = useQuery({
+    queryKey: ["diretoria-all-members"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("skater_profiles")
+        .select("user_id, modality, is_active");
+      const map = new Map<string, { modality: SkateModality; is_active: boolean }>();
+      for (const row of data ?? []) {
+        map.set(row.user_id, {
+          modality: row.modality as SkateModality,
+          is_active: Boolean(row.is_active),
+        });
+      }
+      return map;
+    },
+  });
 
   const {
     data: users = [],
@@ -264,6 +286,31 @@ export function MembersRolesPanel() {
     }
   }
 
+  async function handleSkaterRankingChange(targetUser: RegisteredUserItem, value: string) {
+    try {
+      if (value === "none") {
+        await manageSkaterMutation.mutateAsync({
+          targetUserId: targetUser.user_id,
+          modality: "street",
+          isActive: false,
+        });
+        toast.success(
+          `${targetUser.full_name} configurado como Associado (fora do ranking competitivo).`,
+        );
+      } else {
+        const modality = value as SkateModality;
+        await manageSkaterMutation.mutateAsync({
+          targetUserId: targetUser.user_id,
+          modality,
+          isActive: true,
+        });
+        toast.success(`${targetUser.full_name} autorizado no Ranking ${modality.toUpperCase()}!`);
+      }
+    } catch {
+      toast.error("Não foi possível alterar a modalidade competitiva deste cadastro.");
+    }
+  }
+
   const totalCount = users.length;
   const diretoriaCount = users.filter((u) => u.is_diretoria).length;
   const associadoCount = users.filter((u) => u.is_associado).length;
@@ -292,7 +339,8 @@ export function MembersRolesPanel() {
           <h2 className="text-2xl font-bold">Gestão de Cadastros e Funções ({totalCount})</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Selecione qualquer cadastro da plataforma para atribuir ou revogar os perfis de{" "}
-            <strong>Associado</strong> ou <strong>Diretoria</strong>.
+            <strong>Associado</strong>, <strong>Diretoria</strong> ou autorizar modalidade no{" "}
+            <strong>Ranking (Street / Vert)</strong>.
           </p>
         </div>
       </div>
@@ -386,6 +434,7 @@ export function MembersRolesPanel() {
                 <th className="p-3 font-bold text-foreground">Cadastro</th>
                 <th className="p-3 font-bold text-foreground">Contato</th>
                 <th className="p-3 font-bold text-foreground">Funções Atuais</th>
+                <th className="p-3 font-bold text-foreground">Modalidade Ranking</th>
                 <th className="p-3 font-bold text-foreground text-right">
                   Selecionar como Associado / Diretoria
                 </th>
@@ -394,6 +443,9 @@ export function MembersRolesPanel() {
             <tbody>
               {filteredUsers.map((u) => {
                 const isSelf = u.user_id === currentUser?.id;
+                const skaterInfo = skaterProfilesMap.get(u.user_id);
+                const skaterSelectValue =
+                  skaterInfo && skaterInfo.is_active ? skaterInfo.modality : "none";
 
                 return (
                   <tr
@@ -438,6 +490,22 @@ export function MembersRolesPanel() {
                             Sem função
                           </span>
                         )}
+                      </div>
+                    </td>
+
+                    <td className="p-3">
+                      <div className="flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <select
+                          aria-label={`Modalidade de ranking para ${u.full_name}`}
+                          className="field py-1 px-2 text-xs w-auto"
+                          value={skaterSelectValue}
+                          onChange={(e) => handleSkaterRankingChange(u, e.target.value)}
+                        >
+                          <option value="none">Fora do Ranking (Associado)</option>
+                          <option value="street">Skatista • Street</option>
+                          <option value="vert">Skatista • Vert</option>
+                        </select>
                       </div>
                     </td>
 

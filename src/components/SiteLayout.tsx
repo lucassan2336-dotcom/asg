@@ -13,6 +13,7 @@ export const NAV = [
   { to: "/noticias", label: "Notícias" },
   { to: "/eventos", label: "Eventos" },
   { to: "/resultados", label: "Resultados" },
+  { to: "/ranking", label: "Ranking" },
   { to: "/galeria", label: "Galeria" },
   { to: "/apoiadores", label: "Apoiadores" },
   { to: "/contato", label: "Contato" },
