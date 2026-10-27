@@ -118,6 +118,54 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_results: {
+        Row: {
+          athlete_name: string
+          category: string
+          championship_name: string
+          created_at: string
+          created_by: string | null
+          event_date: string | null
+          id: string
+          notes: string | null
+          position: number
+          published: boolean
+          score: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          athlete_name: string
+          category: string
+          championship_name: string
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          id?: string
+          notes?: string | null
+          position: number
+          published?: boolean
+          score?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          athlete_name?: string
+          category?: string
+          championship_name?: string
+          created_at?: string
+          created_by?: string | null
+          event_date?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          published?: boolean
+          score?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_registrations: {
         Row: {
           created_at: string
@@ -254,41 +302,74 @@ export type Database = {
       financial_transactions: {
         Row: {
           amount: number
+          amount_cents: number
+          cancellation_reason: string | null
           category_id: string | null
+          competency_date: string | null
           created_at: string
           created_by: string | null
           description: string
           donor_name: string | null
+          entry_type: string
           id: string
+          idempotency_key: string | null
           is_donation: boolean
+          is_reversal: boolean
           kind: Database["public"]["Enums"]["finance_kind"]
+          notes: string | null
           occurred_on: string
+          original_transaction_id: string | null
+          payment_method: string | null
+          settlement_date: string | null
+          status: Database["public"]["Enums"]["financial_status"]
           updated_at: string
         }
         Insert: {
           amount: number
+          amount_cents?: number
+          cancellation_reason?: string | null
           category_id?: string | null
+          competency_date?: string | null
           created_at?: string
           created_by?: string | null
           description: string
           donor_name?: string | null
+          entry_type?: string
           id?: string
+          idempotency_key?: string | null
           is_donation?: boolean
+          is_reversal?: boolean
           kind: Database["public"]["Enums"]["finance_kind"]
+          notes?: string | null
           occurred_on: string
+          original_transaction_id?: string | null
+          payment_method?: string | null
+          settlement_date?: string | null
+          status?: Database["public"]["Enums"]["financial_status"]
           updated_at?: string
         }
         Update: {
           amount?: number
+          amount_cents?: number
+          cancellation_reason?: string | null
           category_id?: string | null
+          competency_date?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
           donor_name?: string | null
+          entry_type?: string
           id?: string
+          idempotency_key?: string | null
           is_donation?: boolean
+          is_reversal?: boolean
           kind?: Database["public"]["Enums"]["finance_kind"]
+          notes?: string | null
           occurred_on?: string
+          original_transaction_id?: string | null
+          payment_method?: string | null
+          settlement_date?: string | null
+          status?: Database["public"]["Enums"]["financial_status"]
           updated_at?: string
         }
         Relationships: [
@@ -299,7 +380,53 @@ export type Database = {
             referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financial_transactions_original_transaction_id_fkey"
+            columns: ["original_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      gallery_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          event_name: string | null
+          id: string
+          image_url: string
+          published: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_name?: string | null
+          id?: string
+          image_url: string
+          published?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_name?: string | null
+          id?: string
+          image_url?: string
+          published?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       membership_applications: {
         Row: {
@@ -450,6 +577,78 @@ export type Database = {
         }
         Relationships: []
       }
+      site_content: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          page_slug: string
+          section_key: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          page_slug: string
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          page_slug?: string
+          section_key?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      site_projects: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          image_url: string | null
+          published: boolean
+          sort_order: number
+          target_audience: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          image_url?: string | null
+          published?: boolean
+          sort_order?: number
+          target_audience?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          image_url?: string | null
+          published?: boolean
+          sort_order?: number
+          target_audience?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sponsors: {
         Row: {
           created_at: string
@@ -509,6 +708,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_financial_transaction: {
+        Args: { _reason: string; _transaction_id: string }
+        Returns: undefined
+      }
+      get_financial_summary: {
+        Args: { _end_date: string; _start_date: string }
+        Returns: {
+          calculated_balance: number
+          net_cash_flow: number
+          opening_balance: number
+          paid_expenses: number
+          pending_payables: number
+          pending_receivables: number
+          received_donations: number
+          received_revenues: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -519,6 +735,10 @@ export type Database = {
       reopen_application: {
         Args: { _application_id: string; _reason: string }
         Returns: undefined
+      }
+      reverse_financial_transaction: {
+        Args: { _reason: string; _transaction_id: string }
+        Returns: string
       }
       review_application: {
         Args: { _application_id: string; _approve: boolean; _notes?: string }
@@ -539,6 +759,12 @@ export type Database = {
       app_role: "diretoria" | "associado"
       application_status: "pendente" | "aprovada" | "rejeitada"
       finance_kind: "receita" | "despesa"
+      financial_status:
+        | "previsto"
+        | "pendente"
+        | "recebido"
+        | "pago"
+        | "cancelado"
       membership_status: "ativa" | "suspensa" | "encerrada"
       registration_status: "inscrito" | "cancelado" | "presente"
     }
@@ -672,6 +898,13 @@ export const Constants = {
       app_role: ["diretoria", "associado"],
       application_status: ["pendente", "aprovada", "rejeitada"],
       finance_kind: ["receita", "despesa"],
+      financial_status: [
+        "previsto",
+        "pendente",
+        "recebido",
+        "pago",
+        "cancelado",
+      ],
       membership_status: ["ativa", "suspensa", "encerrada"],
       registration_status: ["inscrito", "cancelado", "presente"],
     },
