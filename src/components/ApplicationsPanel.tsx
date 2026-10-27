@@ -107,7 +107,7 @@ export function ApplicationsPanel() {
           : await supabase.rpc("review_application", {
               _application_id: decision.application.id,
               _approve: decision.action === "approve",
-              _notes: cleanNote || undefined,
+              ...(cleanNote ? { _notes: cleanNote } : {}),
             });
 
       if (error) {
