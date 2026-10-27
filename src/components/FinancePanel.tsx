@@ -689,7 +689,7 @@ export function FinancePanel() {
                       {t.attachments && t.attachments.length > 0 ? (
                         <button
                           type="button"
-                          onClick={() => openSignedAttachment(t.attachments![0].storage_path)}
+                          onClick={() => openSignedAttachment(t.attachments![0]!.storage_path)}
                           className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-foreground hover:bg-border"
                           title="Abrir comprovante seguro (link expira em 15min)"
                         >

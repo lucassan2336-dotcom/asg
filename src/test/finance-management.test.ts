@@ -18,7 +18,7 @@ async function asUser(id: string | null) {
 
 async function queryValue<T = any>(sql: string): Promise<T> {
   const res = await db.query<{ val: T }>(sql);
-  return res.rows[0]?.val;
+  return res.rows[0]?.val as T;
 }
 
 beforeAll(async () => {

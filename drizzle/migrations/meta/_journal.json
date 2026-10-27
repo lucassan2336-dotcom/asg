@@ -57,13 +57,6 @@
       "when": 1793060400000,
       "tag": "0007_security_and_integrity_hardening",
       "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1793083545237,
-      "tag": "0008_apply_0005_financial_management_expansion",
-      "breakpoints": true
     }
   ]
 }

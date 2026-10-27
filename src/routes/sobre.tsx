@@ -35,7 +35,7 @@ function SobrePage() {
       <Section>
         <div className="grid gap-6 md:grid-cols-3">
           {pillars.map((item, idx) => {
-            const Icon = PILLAR_ICONS[idx % PILLAR_ICONS.length];
+            const Icon = PILLAR_ICONS[idx % PILLAR_ICONS.length] ?? Compass;
             return (
               <Card key={idx}>
                 <Icon className="mb-3 h-7 w-7 text-accent" />

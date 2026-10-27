@@ -51,7 +51,7 @@ export function ProjectModal({
     }
     try {
       await saveMutation.mutateAsync({
-        id: project?.id,
+        ...(project?.id ? { id: project.id } : {}),
         title: title.trim(),
         description: description.trim(),
         category: category.trim(),
@@ -207,7 +207,7 @@ export function NewsModal({
     }
     try {
       await saveMutation.mutateAsync({
-        id: article?.id,
+        ...(article?.id ? { id: article.id } : {}),
         title: title.trim(),
         summary: summary.trim() || null,
         body: body.trim(),
@@ -345,7 +345,7 @@ export function EventModal({ event, onClose }: { event?: EventItem | null; onClo
     }
     try {
       await saveMutation.mutateAsync({
-        id: event?.id,
+        ...(event?.id ? { id: event.id } : {}),
         title: title.trim(),
         description: description.trim(),
         location: location.trim() || null,
@@ -498,7 +498,7 @@ export function ResultModal({
     }
     try {
       await saveMutation.mutateAsync({
-        id: result?.id,
+        ...(result?.id ? { id: result.id } : {}),
         championship_name: championship.trim(),
         category: category.trim(),
         position: Number(position) || 1,
@@ -675,7 +675,7 @@ export function GalleryModal({
     }
     try {
       await saveMutation.mutateAsync({
-        id: photo?.id,
+        ...(photo?.id ? { id: photo.id } : {}),
         title: title.trim(),
         image_url: imageUrl.trim(),
         caption: caption.trim() || null,
@@ -818,7 +818,7 @@ export function SponsorModal({
     }
     try {
       await saveMutation.mutateAsync({
-        id: sponsor?.id,
+        ...(sponsor?.id ? { id: sponsor.id } : {}),
         name: name.trim(),
         logo_url: logoUrl.trim() || null,
         website: website.trim() || null,
