@@ -37,6 +37,8 @@ export function FinanceCancellationDialog({
   const isReverse = mode === "reverse";
 
   async function handleConfirm() {
+    const tx = transaction;
+    if (!tx) return;
     const cleanReason = reason.trim();
     if (cleanReason.length < 3) {
       toast.error("Informe uma justificativa com no mínimo 3 caracteres.");
@@ -51,7 +53,7 @@ export function FinanceCancellationDialog({
     try {
       if (isReverse) {
         const { error } = await supabase.rpc("reverse_financial_transaction", {
-          _transaction_id: transaction.id,
+          _transaction_id: tx.id,
           _reason: cleanReason,
         });
         if (error) {
@@ -64,10 +66,10 @@ export function FinanceCancellationDialog({
           toast.error("Falha ao registrar estorno: " + safeMsg);
           return;
         }
-        toast.success(`Estorno de ${formatBRL(transaction.amount)} realizado com sucesso.`);
+        toast.success(`Estorno de ${formatBRL(tx.amount)} realizado com sucesso.`);
       } else {
         const { error } = await supabase.rpc("cancel_financial_transaction", {
-          _transaction_id: transaction.id,
+          _transaction_id: tx.id,
           _reason: cleanReason,
         });
         if (error) {
@@ -80,7 +82,7 @@ export function FinanceCancellationDialog({
           toast.error("Falha ao cancelar lançamento: " + safeMsg);
           return;
         }
-        toast.success(`Lançamento de ${formatBRL(transaction.amount)} cancelado com sucesso.`);
+        toast.success(`Lançamento de ${formatBRL(tx.amount)} cancelado com sucesso.`);
       }
 
       setReason("");
