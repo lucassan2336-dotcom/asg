@@ -8,24 +8,22 @@ import { useMyRoles, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { ApplicationsPanel } from "@/components/ApplicationsPanel";
 import { MembersRolesPanel } from "@/components/MembersRolesPanel";
-import { FinancePanel } from "@/components/FinancePanel";
 import { PagesManagementPanel } from "@/components/PagesManagementPanel";
 
 export const Route = createFileRoute("/_authenticated/diretoria")({
   head: () =>
     seo(
       "Painel da diretoria",
-      "Análise de solicitações, cadastros e funções, gestão financeira, edição de páginas, avisos e eventos da A.S.G.",
+      "Análise de solicitações, cadastros e funções, edição de páginas, avisos e eventos da A.S.G.",
     ),
   component: DiretoriaPage,
 });
 
-type Tab = "solicitacoes" | "cadastros" | "financeiro" | "paginas" | "avisos" | "eventos";
+type Tab = "solicitacoes" | "cadastros" | "paginas" | "avisos" | "eventos";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "solicitacoes", label: "Solicitações" },
   { id: "cadastros", label: "Cadastros e Funções" },
-  { id: "financeiro", label: "Financeiro" },
   { id: "paginas", label: "Páginas do Site" },
   { id: "avisos", label: "Avisos" },
   { id: "eventos", label: "Eventos" },
@@ -62,8 +60,8 @@ function DiretoriaPage() {
   return (
     <>
       <PageHero eyebrow="Gestão" title="Painel da diretoria">
-        Gestão integrada da A.S.G.: solicitações de associados, tesouraria e prestação de contas,
-        avisos e eventos.
+        Gestão integrada da A.S.G.: solicitações de associados, cadastros e funções da diretoria,
+        edição de páginas, avisos e eventos.
       </PageHero>
       <Section>
         <div className="mb-8 flex flex-wrap gap-2">
@@ -79,7 +77,6 @@ function DiretoriaPage() {
         </div>
         {tab === "solicitacoes" && <ApplicationsPanel />}
         {tab === "cadastros" && <MembersRolesPanel />}
-        {tab === "financeiro" && <FinancePanel />}
         {tab === "paginas" && <PagesManagementPanel />}
         {tab === "avisos" && <AnnouncementsPanel />}
         {tab === "eventos" && <EventsPanel />}

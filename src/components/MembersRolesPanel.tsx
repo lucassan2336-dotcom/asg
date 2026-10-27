@@ -338,8 +338,9 @@ export function MembersRolesPanel() {
         <div>
           <h2 className="text-2xl font-bold">Gestão de Cadastros e Funções ({totalCount})</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Selecione qualquer cadastro da plataforma para atribuir ou revogar os perfis de{" "}
-            <strong>Associado</strong>, <strong>Diretoria</strong> ou autorizar modalidade no{" "}
+            Selecione qualquer cadastro da plataforma — tanto <strong>Skatistas Locais</strong>{" "}
+            quanto <strong>Associados</strong> — para atribuir ou revogar o cargo de{" "}
+            <strong>Diretoria</strong>, ou autorizar modalidade no{" "}
             <strong>Ranking (Street / Vert)</strong>.
           </p>
         </div>

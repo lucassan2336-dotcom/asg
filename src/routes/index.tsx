@@ -143,18 +143,49 @@ function Index() {
       </Section>
 
       <Section>
-        <div className="rounded-md border-2 border-ink bg-ink p-8 text-cream shadow-stamp md:p-12">
-          <h2 className="text-3xl md:text-5xl">{ctaBanner?.title || "Faça parte da A.S.G."}</h2>
-          <p className="mt-4 max-w-xl opacity-85">
-            {ctaBanner?.description ||
-              "Envie sua solicitação. A diretoria analisa cada pedido e retorna com a aprovação."}
-          </p>
-          <Link
-            to={safeInternalLink(ctaBanner?.buttonLink, "/associe-se")}
-            className="btn-stamp mt-6 inline-flex"
-          >
-            {ctaBanner?.buttonText || "Solicitar associação"}
-          </Link>
+        <div className="grid gap-6 lg:grid-cols-12 items-stretch">
+          <div className="rounded-md border-2 border-ink bg-ink p-8 text-cream shadow-stamp md:p-12 lg:col-span-8 flex flex-col justify-between">
+            <div>
+              <h2 className="text-3xl md:text-5xl">{ctaBanner?.title || "Faça parte da A.S.G."}</h2>
+              <p className="mt-4 max-w-xl opacity-85">
+                {ctaBanner?.description ||
+                  "Envie sua solicitação. A diretoria analisa cada pedido e retorna com a aprovação."}
+              </p>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Link
+                to={safeInternalLink(ctaBanner?.buttonLink, "/associe-se")}
+                className="btn-stamp inline-flex"
+              >
+                {ctaBanner?.buttonText || "Solicitar associação"}
+              </Link>
+              <Link
+                to="/contato"
+                className="btn-stamp bg-rust text-cream inline-flex items-center gap-2 hover:brightness-110"
+              >
+                <HeartHandshake className="h-4 w-4" /> DOAÇÃO
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-md border-2 border-ink bg-secondary p-8 shadow-stamp lg:col-span-4 flex flex-col justify-between">
+            <div>
+              <span className="eyebrow block text-rust">Fortaleça a Cena</span>
+              <h3 className="text-2xl md:text-3xl font-display uppercase mt-1">Apoie com PIX</h3>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Toda contribuição apoia diretamente a reforma da pista, oficinas gratuitas e eventos
+                para a juventude de Guararema.
+              </p>
+            </div>
+            <div className="mt-6">
+              <Link
+                to="/contato"
+                className="btn-stamp w-full justify-center bg-rust text-cream hover:brightness-110"
+              >
+                <HeartHandshake className="h-4 w-4" /> DOAÇÃO
+              </Link>
+            </div>
+          </div>
         </div>
       </Section>
     </>

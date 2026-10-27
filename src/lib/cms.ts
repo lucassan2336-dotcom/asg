@@ -47,6 +47,14 @@ export interface SobreContent {
   };
 }
 
+export interface ContatoPixConfig {
+  key: string;
+  keyType: string;
+  recipientName: string;
+  bank?: string;
+  message?: string;
+}
+
 export interface ContatoContent {
   hero: PageHeroContent;
   contactInfo: {
@@ -56,6 +64,7 @@ export interface ContatoContent {
     address: string;
     hours: string;
   };
+  pix?: ContatoPixConfig;
 }
 
 export interface GenericPageContent {
@@ -260,6 +269,14 @@ export const DEFAULT_PAGE_CONTENTS: Record<string, any> = {
       instagram: "@asg_skate_guararema",
       address: "Pista Pública de Skate de Guararema - Guararema, SP",
       hours: "Atendimento da diretoria aos finais de semana e sessões oficiais",
+    },
+    pix: {
+      key: "contato@asgskate.com.br",
+      keyType: "E-mail",
+      recipientName: "Associação dos Skatistas de Guararema",
+      bank: "Banco do Brasil / Cooperativa",
+      message:
+        "Sua doação ajuda a manter a pista municipal de skate, realizar oficinas gratuitas para iniciantes e apoiar nossos atletas.",
     },
   },
 };
