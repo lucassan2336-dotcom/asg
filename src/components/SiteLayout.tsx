@@ -56,15 +56,25 @@ export function Header() {
           {user ? (
             <>
               {roles.includes("diretoria") && (
-                <Link to="/diretoria" className="btn-ghost-stamp hidden sm:inline-flex">Diretoria</Link>
+                <Link to="/diretoria" className="btn-ghost-stamp hidden sm:inline-flex">
+                  Diretoria
+                </Link>
               )}
-              <Link to="/area" className="btn-stamp hidden sm:inline-flex">Minha área</Link>
-              <button onClick={handleSignOut} className="btn-ghost-stamp hidden sm:inline-flex">Sair</button>
+              <Link to="/area" className="btn-stamp hidden sm:inline-flex">
+                Minha área
+              </Link>
+              <button onClick={handleSignOut} className="btn-ghost-stamp hidden sm:inline-flex">
+                Sair
+              </button>
             </>
           ) : (
             <>
-              <Link to="/auth" className="btn-ghost-stamp hidden sm:inline-flex">Entrar</Link>
-              <Link to="/associe-se" className="btn-stamp hidden sm:inline-flex">Associe-se</Link>
+              <Link to="/auth" className="btn-ghost-stamp hidden sm:inline-flex">
+                Entrar
+              </Link>
+              <Link to="/associe-se" className="btn-stamp hidden sm:inline-flex">
+                Associe-se
+              </Link>
             </>
           )}
           <button aria-label="Menu" className="lg:hidden p-2" onClick={() => setOpen(!open)}>
@@ -90,11 +100,19 @@ export function Header() {
             {user ? (
               <>
                 {roles.includes("diretoria") && (
-                  <Link to="/diretoria" onClick={() => setOpen(false)} className="btn-ghost-stamp w-full justify-center">
+                  <Link
+                    to="/diretoria"
+                    onClick={() => setOpen(false)}
+                    className="btn-ghost-stamp w-full justify-center"
+                  >
                     Painel da diretoria
                   </Link>
                 )}
-                <Link to="/area" onClick={() => setOpen(false)} className="btn-stamp w-full justify-center">
+                <Link
+                  to="/area"
+                  onClick={() => setOpen(false)}
+                  className="btn-stamp w-full justify-center"
+                >
                   Minha área
                 </Link>
                 <button onClick={handleSignOut} className="btn-ghost-stamp w-full justify-center">
@@ -103,10 +121,18 @@ export function Header() {
               </>
             ) : (
               <>
-                <Link to="/auth" onClick={() => setOpen(false)} className="btn-ghost-stamp w-full justify-center">
+                <Link
+                  to="/auth"
+                  onClick={() => setOpen(false)}
+                  className="btn-ghost-stamp w-full justify-center"
+                >
                   Entrar
                 </Link>
-                <Link to="/associe-se" onClick={() => setOpen(false)} className="btn-stamp w-full justify-center">
+                <Link
+                  to="/associe-se"
+                  onClick={() => setOpen(false)}
+                  className="btn-stamp w-full justify-center"
+                >
                   Quero me associar
                 </Link>
               </>
@@ -131,7 +157,9 @@ export function Footer() {
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           {NAV.map((n) => (
-            <Link key={n.to} to={n.to} className="opacity-80 hover:opacity-100">{n.label}</Link>
+            <Link key={n.to} to={n.to} className="opacity-80 hover:opacity-100">
+              {n.label}
+            </Link>
           ))}
         </div>
         <div className="text-sm opacity-80">
@@ -140,20 +168,31 @@ export function Footer() {
         </div>
       </div>
       <div className="flex items-center justify-center gap-2 border-t border-cream/15 py-4 text-xs opacity-60">
-        <Star className="h-3 w-3" /> © {new Date().getFullYear()} A.S.G. <Star className="h-3 w-3" />
+        <Star className="h-3 w-3" /> © {new Date().getFullYear()} A.S.G.{" "}
+        <Star className="h-3 w-3" />
       </div>
     </footer>
   );
 }
 
-export function PageHero({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+export function PageHero({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children?: ReactNode;
+}) {
   return (
     <section className="grain-olive border-b-2 border-ink">
       <div className="mx-auto max-w-6xl px-4 py-14 md:py-20">
         <p className="eyebrow mb-3 flex items-center gap-2 text-cream">
           <Star className="h-4 w-4 fill-current" /> {eyebrow}
         </p>
-        <h1 className="text-4xl text-cream drop-shadow-[3px_3px_0_var(--ink)] md:text-6xl">{title}</h1>
+        <h1 className="text-4xl text-cream drop-shadow-[3px_3px_0_var(--ink)] md:text-6xl">
+          {title}
+        </h1>
         {children && <div className="mt-4 max-w-2xl text-lg text-cream/90">{children}</div>}
       </div>
     </section>
@@ -182,5 +221,9 @@ export function Section({ children, className = "" }: { children: ReactNode; cla
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-md border-2 border-ink bg-card p-5 shadow-stamp ${className}`}>{children}</div>;
+  return (
+    <div className={`rounded-md border-2 border-ink bg-card p-5 shadow-stamp ${className}`}>
+      {children}
+    </div>
+  );
 }

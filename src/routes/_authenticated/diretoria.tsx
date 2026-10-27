@@ -7,16 +7,24 @@ import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { useMyRoles, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { ApplicationsPanel } from "@/components/ApplicationsPanel";
+import { FinancePanel } from "@/components/FinancePanel";
+import { PagesManagementPanel } from "@/components/PagesManagementPanel";
 
 export const Route = createFileRoute("/_authenticated/diretoria")({
-  head: () => seo("Painel da diretoria", "Análise de solicitações, avisos e eventos da A.S.G."),
+  head: () =>
+    seo(
+      "Painel da diretoria",
+      "Análise de solicitações, gestão financeira, edição de páginas, avisos e eventos da A.S.G.",
+    ),
   component: DiretoriaPage,
 });
 
-type Tab = "solicitacoes" | "avisos" | "eventos";
+type Tab = "solicitacoes" | "financeiro" | "paginas" | "avisos" | "eventos";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "solicitacoes", label: "Solicitações" },
+  { id: "financeiro", label: "Financeiro" },
+  { id: "paginas", label: "Páginas do Site" },
   { id: "avisos", label: "Avisos" },
   { id: "eventos", label: "Eventos" },
 ];
@@ -52,7 +60,8 @@ function DiretoriaPage() {
   return (
     <>
       <PageHero eyebrow="Gestão" title="Painel da diretoria">
-        Analise solicitações de associação e gerencie avisos e eventos.
+        Gestão integrada da A.S.G.: solicitações de associados, tesouraria e prestação de contas,
+        avisos e eventos.
       </PageHero>
       <Section>
         <div className="mb-8 flex flex-wrap gap-2">
@@ -67,6 +76,8 @@ function DiretoriaPage() {
           ))}
         </div>
         {tab === "solicitacoes" && <ApplicationsPanel />}
+        {tab === "financeiro" && <FinancePanel />}
+        {tab === "paginas" && <PagesManagementPanel />}
         {tab === "avisos" && <AnnouncementsPanel />}
         {tab === "eventos" && <EventsPanel />}
       </Section>
@@ -122,38 +133,67 @@ function AnnouncementsPanel() {
         <form className="mt-4 space-y-3" onSubmit={create}>
           <label className="block">
             <span className="eyebrow">Título</span>
-            <input required maxLength={200} className="field mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              required
+              maxLength={200}
+              className="field mt-1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="eyebrow">Texto</span>
-            <textarea required maxLength={2000} rows={4} className="field mt-1" value={body} onChange={(e) => setBody(e.target.value)} />
+            <textarea
+              required
+              maxLength={2000}
+              rows={4}
+              className="field mt-1"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="eyebrow">Público</span>
-            <select className="field mt-1" value={audience} onChange={(e) => setAudience(e.target.value as "associados" | "publico")}>
+            <select
+              className="field mt-1"
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as "associados" | "publico")}
+            >
               <option value="associados">Associados</option>
               <option value="publico">Público</option>
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={published}
+              onChange={(e) => setPublished(e.target.checked)}
+            />
             Publicar imediatamente
           </label>
-          <button disabled={busy} className="btn-stamp disabled:opacity-60">Salvar aviso</button>
+          <button disabled={busy} className="btn-stamp disabled:opacity-60">
+            Salvar aviso
+          </button>
         </form>
       </Card>
       <Card>
         <h2 className="text-2xl">Avisos cadastrados</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {(items ?? []).map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-3 border-b border-border pb-2">
+            <li
+              key={a.id}
+              className="flex items-center justify-between gap-3 border-b border-border pb-2"
+            >
               <span>{a.title}</span>
               <span className="font-condensed font-bold uppercase text-muted-foreground">
-                {a.published ? "Publicado" : "Rascunho"} · {a.audience === "publico" ? "Público" : "Associados"}
+                {a.published ? "Publicado" : "Rascunho"} ·{" "}
+                {a.audience === "publico" ? "Público" : "Associados"}
               </span>
             </li>
           ))}
-          {(items ?? []).length === 0 && <p className="text-muted-foreground">Nenhum aviso cadastrado.</p>}
+          {(items ?? []).length === 0 && (
+            <p className="text-muted-foreground">Nenhum aviso cadastrado.</p>
+          )}
         </ul>
       </Card>
     </div>
@@ -214,40 +254,78 @@ function EventsPanel() {
         <form className="mt-4 space-y-3" onSubmit={create}>
           <label className="block">
             <span className="eyebrow">Título</span>
-            <input required maxLength={200} className="field mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              required
+              maxLength={200}
+              className="field mt-1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="eyebrow">Descrição</span>
-            <textarea maxLength={2000} rows={3} className="field mt-1" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <textarea
+              maxLength={2000}
+              rows={3}
+              className="field mt-1"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="eyebrow">Local</span>
-            <input maxLength={200} className="field mt-1" value={location} onChange={(e) => setLocation(e.target.value)} />
+            <input
+              maxLength={200}
+              className="field mt-1"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
           </label>
           <label className="block">
             <span className="eyebrow">Data e hora</span>
-            <input type="datetime-local" className="field mt-1" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            <input
+              type="datetime-local"
+              className="field mt-1"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+            />
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={registrationOpen} onChange={(e) => setRegistrationOpen(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={registrationOpen}
+              onChange={(e) => setRegistrationOpen(e.target.checked)}
+            />
             Inscrições abertas
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={published}
+              onChange={(e) => setPublished(e.target.checked)}
+            />
             Publicar imediatamente
           </label>
-          <button disabled={busy} className="btn-stamp disabled:opacity-60">Salvar evento</button>
+          <button disabled={busy} className="btn-stamp disabled:opacity-60">
+            Salvar evento
+          </button>
         </form>
       </Card>
       <Card>
         <h2 className="text-2xl">Eventos cadastrados</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {(items ?? []).map((ev) => (
-            <li key={ev.id} className="flex items-center justify-between gap-3 border-b border-border pb-2">
+            <li
+              key={ev.id}
+              className="flex items-center justify-between gap-3 border-b border-border pb-2"
+            >
               <span>
                 {ev.title}
                 {ev.starts_at && (
-                  <span className="text-muted-foreground"> · {new Date(ev.starts_at).toLocaleDateString("pt-BR")}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {new Date(ev.starts_at).toLocaleDateString("pt-BR")}
+                  </span>
                 )}
               </span>
               <span className="font-condensed font-bold uppercase text-muted-foreground">
@@ -255,7 +333,9 @@ function EventsPanel() {
               </span>
             </li>
           ))}
-          {(items ?? []).length === 0 && <p className="text-muted-foreground">Nenhum evento cadastrado.</p>}
+          {(items ?? []).length === 0 && (
+            <p className="text-muted-foreground">Nenhum evento cadastrado.</p>
+          )}
         </ul>
       </Card>
     </div>

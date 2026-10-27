@@ -9,7 +9,8 @@ import { seo } from "@/lib/seo";
 import { ApplicationStatusBadge } from "@/components/ApplicationStatus";
 
 export const Route = createFileRoute("/_authenticated/area")({
-  head: () => seo("Área do associado", "Acompanhe sua associação, avisos internos e inscrições em eventos."),
+  head: () =>
+    seo("Área do associado", "Acompanhe sua associação, avisos internos e inscrições em eventos."),
   component: AreaPage,
 });
 
@@ -114,9 +115,25 @@ function AreaPage() {
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!userId) return;
+    const cleanName = fullName.trim().slice(0, 100);
+    const cleanPhone = phone.trim().slice(0, 20);
+    if (cleanName.length < 3) {
+      toast.error("Informe seu nome completo (mínimo de 3 caracteres).");
+      return;
+    }
+    if (
+      cleanPhone &&
+      (!/^[0-9+() .-]{8,20}$/.test(cleanPhone) || cleanPhone.replace(/\D/g, "").length < 8)
+    ) {
+      toast.error("Informe um telefone válido com DDD ou deixe o campo em branco.");
+      return;
+    }
     const { error } = await supabase
       .from("profiles")
-      .update({ full_name: fullName.trim().slice(0, 100), phone: phone.trim().slice(0, 20) || null })
+      .update({
+        full_name: cleanName,
+        phone: cleanPhone || null,
+      })
       .eq("id", userId);
     if (error) {
       toast.error("Não foi possível salvar o perfil.");
@@ -128,7 +145,10 @@ function AreaPage() {
 
   return (
     <>
-      <PageHero eyebrow="Área do associado" title={`Olá, ${(profile?.full_name || user?.email || "").split(" ")[0] || "skatista"}`}>
+      <PageHero
+        eyebrow="Área do associado"
+        title={`Olá, ${(profile?.full_name || user?.email || "").split(" ")[0] || "skatista"}`}
+      >
         Acompanhe sua associação, os avisos internos e suas inscrições.
       </PageHero>
 
@@ -140,7 +160,8 @@ function AreaPage() {
               <p className="flex items-center gap-3">
                 Situação: <StatusChip value={membership.status} />
                 <span className="text-sm text-muted-foreground">
-                  desde {new Date(membership.member_since + "T00:00:00").toLocaleDateString("pt-BR")}
+                  desde{" "}
+                  {new Date(membership.member_since + "T00:00:00").toLocaleDateString("pt-BR")}
                 </span>
               </p>
             ) : application ? (
@@ -149,15 +170,30 @@ function AreaPage() {
                   Solicitação: <ApplicationStatusBadge status={application.status} />
                 </p>
                 {application.status === "pendente" && (
-                  <p className="text-sm text-muted-foreground">A diretoria ainda está analisando seu pedido.</p>
+                  <p className="text-sm text-muted-foreground">
+                    A diretoria ainda está analisando seu pedido.
+                  </p>
                 )}
-                {application.reviewed_at && <p className="text-sm text-muted-foreground">Analisada em {new Date(application.reviewed_at).toLocaleDateString("pt-BR")}</p>}
-                {application.status === "rejeitada" && <p className="text-sm text-muted-foreground">Seu pedido foi rejeitado. Entre em contato com a diretoria para solicitar reanálise.</p>}
+                {application.reviewed_at && (
+                  <p className="text-sm text-muted-foreground">
+                    Analisada em {new Date(application.reviewed_at).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+                {application.status === "rejeitada" && (
+                  <p className="text-sm text-muted-foreground">
+                    Seu pedido foi rejeitado. Entre em contato com a diretoria para solicitar
+                    reanálise.
+                  </p>
+                )}
               </>
             ) : (
               <>
-                <p className="text-muted-foreground">Você ainda não enviou uma solicitação de associação.</p>
-                <Link to="/associe-se" className="btn-stamp inline-flex">Solicitar associação</Link>
+                <p className="text-muted-foreground">
+                  Você ainda não enviou uma solicitação de associação.
+                </p>
+                <Link to="/associe-se" className="btn-stamp inline-flex">
+                  Solicitar associação
+                </Link>
               </>
             )}
           </div>
@@ -168,11 +204,23 @@ function AreaPage() {
           <form className="mt-4 space-y-3" onSubmit={saveProfile}>
             <label className="block">
               <span className="eyebrow">Nome completo</span>
-              <input required maxLength={100} className="field mt-1" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              <input
+                required
+                maxLength={100}
+                className="field mt-1"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
             </label>
             <label className="block">
               <span className="eyebrow">Telefone</span>
-              <input type="tel" maxLength={20} className="field mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input
+                type="tel"
+                maxLength={20}
+                className="field mt-1"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
             </label>
             <button className="btn-stamp">Salvar</button>
           </form>
@@ -201,11 +249,18 @@ function AreaPage() {
           {registrations && registrations.length > 0 ? (
             <ul className="mt-4 space-y-3">
               {registrations.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0">
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 border-b border-border pb-3 last:border-0"
+                >
                   <div>
-                    <p className="font-condensed text-lg font-bold uppercase">{r.events?.title ?? "Evento"}</p>
+                    <p className="font-condensed text-lg font-bold uppercase">
+                      {r.events?.title ?? "Evento"}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      {r.events?.starts_at ? new Date(r.events.starts_at).toLocaleDateString("pt-BR") : "Data a definir"}
+                      {r.events?.starts_at
+                        ? new Date(r.events.starts_at).toLocaleDateString("pt-BR")
+                        : "Data a definir"}
                       {r.events?.location ? ` · ${r.events.location}` : ""}
                     </p>
                   </div>
@@ -214,7 +269,9 @@ function AreaPage() {
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-muted-foreground">Você ainda não se inscreveu em nenhum evento.</p>
+            <p className="mt-4 text-muted-foreground">
+              Você ainda não se inscreveu em nenhum evento.
+            </p>
           )}
         </Card>
       </Section>

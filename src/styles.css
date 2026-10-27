@@ -71,17 +71,29 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0.01em; line-height: 1.05; }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+    line-height: 1.05;
+  }
 }
 
-@utility shadow-stamp { box-shadow: var(--shadow-stamp); }
-@utility shadow-stamp-sm { box-shadow: var(--shadow-stamp-sm); }
+@utility shadow-stamp {
+  box-shadow: var(--shadow-stamp);
+}
+@utility shadow-stamp-sm {
+  box-shadow: var(--shadow-stamp-sm);
+}
 @utility eyebrow {
   font-family: var(--font-condensed);
   text-transform: uppercase;
@@ -91,11 +103,16 @@
 }
 @utility grain-olive {
   background-color: var(--olive);
-  background-image: radial-gradient(color-mix(in oklab, var(--ink) 12%, transparent) 1px, transparent 1px);
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--ink) 12%, transparent) 1px,
+    transparent 1px
+  );
   background-size: 4px 4px;
 }
 @utility ring-seal {
-  box-shadow: 0 0 0 3px var(--cream), 0 0 0 6px var(--ink);
+  box-shadow:
+    0 0 0 3px var(--cream),
+    0 0 0 6px var(--ink);
 }
 @utility btn-stamp {
   display: inline-flex;
@@ -111,8 +128,13 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   box-shadow: var(--shadow-stamp-sm);
-  transition: transform .12s, box-shadow .12s;
-  &:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow-stamp); }
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+  &:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-stamp);
+  }
 }
 @utility btn-ghost-stamp {
   display: inline-flex;
@@ -128,7 +150,9 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   box-shadow: var(--shadow-stamp-sm);
-  &:hover { background: var(--muted); }
+  &:hover {
+    background: var(--muted);
+  }
 }
 @utility field {
   width: 100%;
@@ -136,5 +160,8 @@
   background: var(--card);
   border-radius: var(--radius);
   padding: 0.6rem 0.75rem;
-  &:focus { outline: 2px solid var(--capy); outline-offset: 2px; }
+  &:focus {
+    outline: 2px solid var(--capy);
+    outline-offset: 2px;
+  }
 }

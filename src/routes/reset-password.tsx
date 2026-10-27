@@ -96,7 +96,10 @@ function ResetPasswordPage() {
                   onChange={(e) => setPassword2(e.target.value)}
                 />
               </label>
-              <button disabled={busy} className="btn-stamp w-full justify-center disabled:opacity-60">
+              <button
+                disabled={busy}
+                className="btn-stamp w-full justify-center disabled:opacity-60"
+              >
                 {busy ? "Aguarde…" : "Salvar nova senha"}
               </button>
             </form>

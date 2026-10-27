@@ -22,9 +22,13 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl">404</h1>
         <h2 className="mt-4 text-xl">Página não encontrada</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Essa manobra não deu certo. A página não existe ou foi movida.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Essa manobra não deu certo. A página não existe ou foi movida.
+        </p>
         <div className="mt-6">
-          <Link to="/" className="btn-stamp">Voltar ao início</Link>
+          <Link to="/" className="btn-stamp">
+            Voltar ao início
+          </Link>
         </div>
       </div>
     </div>
@@ -41,10 +45,22 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl">Esta página não carregou</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Algo deu errado. Tente novamente ou volte ao início.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Algo deu errado. Tente novamente ou volte ao início.
+        </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button onClick={() => { router.invalidate(); reset(); }} className="btn-stamp">Tentar de novo</button>
-          <a href="/" className="btn-ghost-stamp">Início</a>
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="btn-stamp"
+          >
+            Tentar de novo
+          </button>
+          <a href="/" className="btn-ghost-stamp">
+            Início
+          </a>
         </div>
       </div>
     </div>
@@ -57,7 +73,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "A.S.G. — Associação dos Skatistas de Guararema" },
-      { name: "description", content: "Associação dos Skatistas de Guararema: skate, comunidade e projetos sociais." },
+      {
+        name: "description",
+        content: "Associação dos Skatistas de Guararema: skate, comunidade e projetos sociais.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

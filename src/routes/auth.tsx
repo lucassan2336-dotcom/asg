@@ -12,7 +12,8 @@ export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>): AuthSearch => ({
     redirect: typeof search["redirect"] === "string" ? search["redirect"] : undefined,
   }),
-  head: () => seo("Entrar", "Acesse sua conta da A.S.G. ou crie uma nova para solicitar associação."),
+  head: () =>
+    seo("Entrar", "Acesse sua conta da A.S.G. ou crie uma nova para solicitar associação."),
   component: AuthPage,
 });
 
@@ -60,7 +61,17 @@ function AuthPage() {
         navigate({ to: safeRedirect(redirectTarget) });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Não foi possível concluir. Tente novamente.");
+      const raw = err instanceof Error ? err.message.toLowerCase() : "";
+      const friendly = raw.includes("invalid login credentials")
+        ? "E-mail ou senha incorretos."
+        : raw.includes("email not confirmed")
+          ? "Confirme seu e-mail antes de acessar a conta."
+          : raw.includes("already registered") || raw.includes("already exists")
+            ? "Não foi possível concluir o cadastro com este e-mail."
+            : raw.includes("rate limit") || raw.includes("too many requests")
+              ? "Muitas tentativas em sequência. Aguarde alguns instantes e tente novamente."
+              : "Não foi possível concluir a autenticação. Verifique os dados informados.";
+      toast.error(friendly);
     } finally {
       setBusy(false);
     }
@@ -84,10 +95,16 @@ function AuthPage() {
             <div className="py-6 text-center">
               <h2 className="text-2xl">Confira seu e-mail</h2>
               <p className="mt-2 text-muted-foreground">
-                Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para ativar sua conta e
-                depois entre aqui.
+                Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para
+                ativar sua conta e depois entre aqui.
               </p>
-              <button className="btn-ghost-stamp mt-6" onClick={() => { setConfirmSent(false); setMode("entrar"); }}>
+              <button
+                className="btn-ghost-stamp mt-6"
+                onClick={() => {
+                  setConfirmSent(false);
+                  setMode("entrar");
+                }}
+              >
                 Voltar para entrar
               </button>
             </div>
@@ -95,9 +112,16 @@ function AuthPage() {
             <div className="py-6 text-center">
               <h2 className="text-2xl">Link enviado</h2>
               <p className="mt-2 text-muted-foreground">
-                Se existir uma conta com <strong>{email}</strong>, você receberá um link para definir uma nova senha.
+                Se existir uma conta com <strong>{email}</strong>, você receberá um link para
+                definir uma nova senha.
               </p>
-              <button className="btn-ghost-stamp mt-6" onClick={() => { setResetSent(false); setMode("entrar"); }}>
+              <button
+                className="btn-ghost-stamp mt-6"
+                onClick={() => {
+                  setResetSent(false);
+                  setMode("entrar");
+                }}
+              >
                 Voltar para entrar
               </button>
             </div>
@@ -106,13 +130,21 @@ function AuthPage() {
               {mode !== "recuperar" && (
                 <div className="mb-6 grid grid-cols-2 gap-2">
                   <button
-                    className={mode === "entrar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    className={
+                      mode === "entrar"
+                        ? "btn-stamp justify-center"
+                        : "btn-ghost-stamp justify-center"
+                    }
                     onClick={() => setMode("entrar")}
                   >
                     Entrar
                   </button>
                   <button
-                    className={mode === "criar" ? "btn-stamp justify-center" : "btn-ghost-stamp justify-center"}
+                    className={
+                      mode === "criar"
+                        ? "btn-stamp justify-center"
+                        : "btn-ghost-stamp justify-center"
+                    }
                     onClick={() => setMode("criar")}
                   >
                     Criar conta
@@ -157,7 +189,10 @@ function AuthPage() {
                     />
                   </label>
                 )}
-                <button disabled={busy} className="btn-stamp w-full justify-center disabled:opacity-60">
+                <button
+                  disabled={busy}
+                  className="btn-stamp w-full justify-center disabled:opacity-60"
+                >
                   {busy
                     ? "Aguarde…"
                     : mode === "entrar"
