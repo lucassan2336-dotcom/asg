@@ -290,9 +290,9 @@ function ContatoPage() {
               <button
                 type="button"
                 onClick={() => setEditPixOpen(true)}
-                className="btn-stamp bg-card text-xs inline-flex items-center gap-1.5"
+                className="btn-stamp bg-olive text-cream border-ink text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
               >
-                <Edit3 className="h-3.5 w-3.5 text-rust" /> Configurar Chave PIX (Diretoria)
+                <Edit3 className="h-3.5 w-3.5 text-cream" /> Configurar Chave PIX (Diretoria)
               </button>
             )}
           </div>

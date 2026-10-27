@@ -328,7 +328,7 @@ function AuthPage() {
                               onClick={() => setModality("street")}
                               className={`flex items-center justify-center gap-2 rounded-sm border-2 px-4 py-3 font-condensed text-sm font-bold uppercase tracking-wider transition-all ${
                                 modality === "street"
-                                  ? "border-ink bg-rust text-cream shadow-stamp"
+                                  ? "border-ink bg-olive text-cream shadow-stamp"
                                   : "border-ink/40 bg-card text-foreground hover:border-ink"
                               }`}
                             >
