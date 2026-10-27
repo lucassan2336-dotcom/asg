@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Star, Users, Trophy, HeartHandshake, ArrowRight, Calendar, Sparkles } from "lucide-react";
-import logo from "@/assets/logo-asg.png.asset.json";
+import logo from "@/assets/logo-asg-nova.png.asset.json";
 import { Section, Card } from "@/components/SiteLayout";
 import { seo } from "@/lib/seo";
 import { usePageContent, useSiteEvents, safeInternalLink, type HomeContent } from "@/lib/cms";
