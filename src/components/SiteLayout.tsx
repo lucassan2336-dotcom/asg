@@ -37,7 +37,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
         <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-          <img src={logo.url} alt="Logo A.S.G." className="h-12 w-12 rounded-full" />
+          <img src={logo.url} alt="Logo A.S.G." className="h-12 w-12 object-contain" />
           <span className="font-display text-xl">A.S.G.</span>
         </Link>
         <nav className="hidden items-center gap-1 lg:flex">
@@ -149,7 +149,7 @@ export function Footer() {
     <footer className="mt-20 border-t-4 border-ink bg-ink text-cream">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-3">
         <div className="flex items-center gap-4">
-          <img src={logo.url} alt="" className="h-20 w-20 rounded-full" />
+          <img src={logo.url} alt="" className="h-20 w-20 object-contain" />
           <div>
             <p className="font-display text-2xl">A.S.G.</p>
             <p className="text-sm opacity-80">Associação dos Skatistas de Guararema</p>

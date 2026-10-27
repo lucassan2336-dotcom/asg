@@ -69,7 +69,7 @@ function Index() {
             <img
               src={logo.url}
               alt="Logo da A.S.G. — capivara de boné e óculos sobre um skate"
-              className="w-64 rotate-[-4deg] rounded-full bg-card shadow-stamp md:w-96"
+              className="w-64 rotate-[-4deg] drop-shadow-[6px_6px_0_var(--ink)] md:w-96"
             />
           </div>
         </div>
