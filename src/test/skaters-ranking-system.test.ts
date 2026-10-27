@@ -149,6 +149,7 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
           age = 21,
           years_practicing = '7 anos',
           favorite_trick = '360 Flip Noseblunt',
+          stance = 'goofy',
           avatar_url = 'https://example.invalid/avatars/lucas.webp'
       WHERE user_id = '${streetSkater1}';
     `);
@@ -158,15 +159,17 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
       age: number;
       years_practicing: string;
       favorite_trick: string;
+      stance: string;
       avatar_url: string;
     }>(
-      `SELECT full_name, age, years_practicing, favorite_trick, avatar_url FROM public.skater_profiles WHERE user_id = '${streetSkater1}'`,
+      `SELECT full_name, age, years_practicing, favorite_trick, stance, avatar_url FROM public.skater_profiles WHERE user_id = '${streetSkater1}'`,
     );
 
     expect(rows[0]?.full_name).toBe("Lucas Street Pro");
     expect(rows[0]?.age).toBe(21);
     expect(rows[0]?.years_practicing).toBe("7 anos");
     expect(rows[0]?.favorite_trick).toBe("360 Flip Noseblunt");
+    expect(rows[0]?.stance).toBe("goofy");
     expect(rows[0]?.avatar_url).toBe("https://example.invalid/avatars/lucas.webp");
   });
 
@@ -457,6 +460,7 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
         show_age_publicly: true,
         years_practicing: "5 anos",
         favorite_trick: "Kickflip",
+        stance: "regular",
         modality: "street",
         total_points: 100,
         first_places: 1,
@@ -475,6 +479,7 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
         show_age_publicly: false,
         years_practicing: "2 anos",
         favorite_trick: "Ollie",
+        stance: "goofy",
         modality: "street",
         total_points: 100,
         first_places: 0,

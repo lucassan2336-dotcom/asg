@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AccountKind = "skatista" | "associado";
 export type SkateModality = "street" | "vert";
+export type SkateStance = "regular" | "goofy";
 export type TrophyTier = "ouro" | "prata" | "bronze";
 export type TiebreakerRule = "podium_counts" | "shared_position_only";
 
@@ -15,6 +16,7 @@ export interface SkaterProfileRow {
   show_age_publicly: boolean;
   years_practicing: string | null;
   favorite_trick: string | null;
+  stance: SkateStance | null;
   modality: SkateModality;
   total_points: number;
   first_places: number;
@@ -43,6 +45,7 @@ export interface RankingEntry {
   age: number | null;
   years_practicing: string | null;
   favorite_trick: string | null;
+  stance: SkateStance | null;
   modality: SkateModality;
   total_points: number;
   first_places: number;
@@ -240,6 +243,7 @@ export function computeModalityRanking(
       age: s.show_age_publicly ? s.age : null,
       years_practicing: s.years_practicing,
       favorite_trick: s.favorite_trick,
+      stance: (s.stance as SkateStance | null) ?? null,
       modality: s.modality,
       total_points: s.total_points,
       first_places: s.first_places,
@@ -269,6 +273,7 @@ export function useModalityRanking(modality: SkateModality) {
           age: r.age ?? null,
           years_practicing: r.years_practicing ?? null,
           favorite_trick: r.favorite_trick ?? null,
+          stance: (r.stance as SkateStance | null) ?? null,
           modality: r.modality as SkateModality,
           total_points: Number(r.total_points ?? 0),
           first_places: Number(r.first_places ?? 0),
@@ -304,7 +309,7 @@ export function usePublicSkaterProfile(skaterId: string) {
       const { data: rawSkater, error: skaterErr } = await (supabase as any)
         .from("skater_profiles")
         .select(
-          "id, user_id, full_name, avatar_url, age, show_age_publicly, years_practicing, favorite_trick, modality, total_points, first_places, second_places, third_places, is_active, created_at, updated_at",
+          "id, user_id, full_name, avatar_url, age, show_age_publicly, years_practicing, favorite_trick, stance, modality, total_points, first_places, second_places, third_places, is_active, created_at, updated_at",
         )
         .eq("id", skaterId)
         .eq("is_active", true)
@@ -331,6 +336,10 @@ export function usePublicSkaterProfile(skaterId: string) {
             age: found.age ?? null,
             years_practicing: found.years_practicing ?? null,
             favorite_trick: found.favorite_trick ?? null,
+            stance:
+              (found.stance as SkateStance | null) ??
+              (rawSkater.stance as SkateStance | null) ??
+              null,
             modality: found.modality as SkateModality,
             total_points: Number(found.total_points ?? 0),
             first_places: Number(found.first_places ?? 0),

@@ -68,7 +68,12 @@ function PodiumCard({ entry }: { entry: RankingEntry }) {
       </h3>
 
       <div className="mt-1 flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-        {entry.age != null && <span>{entry.age} anos</span>}
+        {entry.stance && (
+          <span className="font-semibold text-foreground uppercase">
+            Base: {entry.stance === "goofy" ? "Goofy" : "Regular"}
+          </span>
+        )}
+        {entry.age != null && <span>• {entry.age} anos</span>}
         {entry.years_practicing && <span>• {entry.years_practicing} de skate</span>}
       </div>
 
@@ -200,7 +205,12 @@ function ModalityRankingView({
                           )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                          {entry.age != null && <span>{entry.age} anos</span>}
+                          {entry.stance && (
+                            <span className="font-semibold text-foreground uppercase">
+                              Base: {entry.stance === "goofy" ? "Goofy" : "Regular"}
+                            </span>
+                          )}
+                          {entry.age != null && <span>• {entry.age} anos</span>}
                           {entry.years_practicing && <span>• {entry.years_practicing}</span>}
                           {entry.favorite_trick && (
                             <span className="font-semibold text-foreground">

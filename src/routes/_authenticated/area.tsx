@@ -14,12 +14,14 @@ import {
   usePublicSkaterProfile,
   validateAvatarFile,
   type AccountKind,
+  type SkateStance,
 } from "@/lib/ranking";
 import {
   ChampionshipMedalBadge,
   ModalityBadge,
   RankingTrophyBadge,
   SkaterAvatar,
+  StanceBadge,
 } from "@/components/TrophyBadges";
 
 export const Route = createFileRoute("/_authenticated/area")({
@@ -133,6 +135,7 @@ function AreaPage() {
   const [showAgePublicly, setShowAgePublicly] = useState(true);
   const [yearsPracticing, setYearsPracticing] = useState("");
   const [favoriteTrick, setFavoriteTrick] = useState("");
+  const [stance, setStance] = useState<SkateStance | "">("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -146,6 +149,7 @@ function AreaPage() {
       setShowAgePublicly(skaterProfile.show_age_publicly ?? true);
       setYearsPracticing(skaterProfile.years_practicing ?? "");
       setFavoriteTrick(skaterProfile.favorite_trick ?? "");
+      setStance(skaterProfile.stance ?? "");
       setAvatarUrl(skaterProfile.avatar_url ?? baseProfile?.avatar_url ?? null);
     } else if (associateProfile) {
       setFullName(associateProfile.full_name || baseProfile?.full_name || "");
@@ -244,8 +248,9 @@ function AreaPage() {
             avatar_url: avatarUrl,
             age: parsedAge,
             show_age_publicly: showAgePublicly,
-            years_practicing: yearsPracticing.trim().slice(0, 60) || null,
-            favorite_trick: favoriteTrick.trim().slice(0, 80) || null,
+            years_practicing: yearsPracticing.trim().slice(0, 60) || "",
+            favorite_trick: favoriteTrick.trim().slice(0, 80) || "",
+            stance: stance === "regular" || stance === "goofy" ? stance : null,
           })
           .eq("user_id", userId);
         if (error) throw error;
@@ -257,8 +262,9 @@ function AreaPage() {
           avatar_url: avatarUrl,
           age: parsedAge,
           show_age_publicly: showAgePublicly,
-          years_practicing: yearsPracticing.trim().slice(0, 60) || null,
-          favorite_trick: favoriteTrick.trim().slice(0, 80) || null,
+          years_practicing: yearsPracticing.trim().slice(0, 60) || "",
+          favorite_trick: favoriteTrick.trim().slice(0, 80) || "",
+          stance: stance === "regular" || stance === "goofy" ? stance : null,
           modality: initialModality,
         });
         if (error) throw error;
@@ -380,7 +386,10 @@ function AreaPage() {
                   <span className="font-condensed text-xs font-bold uppercase tracking-widest text-amber">
                     Carteira de Skatista A.S.G.
                   </span>
-                  {skaterProfile && <ModalityBadge modality={skaterProfile.modality} />}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {stance && <StanceBadge stance={stance} size="sm" />}
+                    {skaterProfile && <ModalityBadge modality={skaterProfile.modality} />}
+                  </div>
                 </div>
 
                 <div className="mt-6 flex flex-col sm:flex-row items-center gap-5">
@@ -535,7 +544,20 @@ function AreaPage() {
                     />
                   </label>
 
-                  <label className="block sm:col-span-2">
+                  <label className="block">
+                    <span className="eyebrow">Base (Regular / Goofy)</span>
+                    <select
+                      className="field mt-1"
+                      value={stance}
+                      onChange={(e) => setStance(e.target.value as SkateStance | "")}
+                    >
+                      <option value="">Selecione sua base…</option>
+                      <option value="regular">Regular (pé esquerdo na frente)</option>
+                      <option value="goofy">Goofy (pé direito na frente)</option>
+                    </select>
+                  </label>
+
+                  <label className="block">
                     <span className="eyebrow">Manobra preferida</span>
                     <input
                       maxLength={80}

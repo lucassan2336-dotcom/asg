@@ -9,6 +9,7 @@ import {
   ModalityBadge,
   RankingTrophyBadge,
   SkaterAvatar,
+  StanceBadge,
 } from "@/components/TrophyBadges";
 
 export const Route = createFileRoute("/skatistas/$skaterId")({
@@ -91,6 +92,7 @@ function PublicSkaterProfilePage() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   <ModalityBadge modality={skater.modality} />
+                  <StanceBadge stance={skater.stance} />
                   <RankingTrophyBadge tier={skater.trophy_tier} size="md" />
                 </div>
 

@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS public.skater_profiles (
   show_age_publicly boolean NOT NULL DEFAULT true,
   years_practicing text NOT NULL DEFAULT '' CHECK (char_length(years_practicing) <= 60),
   favorite_trick text NOT NULL DEFAULT '' CHECK (char_length(favorite_trick) <= 100),
+  stance text CHECK (stance IS NULL OR stance IN ('regular', 'goofy')),
   modality public.skate_modality NOT NULL,
   bio text CHECK (bio IS NULL OR char_length(bio) <= 500),
   -- Totais sincronizados automaticamente a partir dos campeonatos publicados (bloqueados contra edição manual)
@@ -260,6 +261,8 @@ DECLARE
   v_modality_raw text := lower(btrim(coalesce(NEW.raw_user_meta_data->>'modality', 'street')));
   v_years text := left(btrim(coalesce(NEW.raw_user_meta_data->>'years_practicing', '')), 60);
   v_trick text := left(btrim(coalesce(NEW.raw_user_meta_data->>'favorite_trick', '')), 100);
+  v_stance_raw text := lower(btrim(coalesce(NEW.raw_user_meta_data->>'stance', '')));
+  v_stance text := NULL;
   v_age_raw text := btrim(coalesce(NEW.raw_user_meta_data->>'age', ''));
   v_age int := NULL;
   v_account_type public.account_kind := 'associado';
@@ -279,6 +282,10 @@ BEGIN
     v_modality := 'vert';
   ELSE
     v_modality := 'street';
+  END IF;
+
+  IF v_stance_raw IN ('regular', 'goofy') THEN
+    v_stance := v_stance_raw;
   END IF;
 
   IF v_age_raw ~ '^[0-9]{1,3}$' THEN
@@ -302,6 +309,7 @@ BEGIN
       age,
       years_practicing,
       favorite_trick,
+      stance,
       modality
     )
     VALUES (
@@ -310,6 +318,7 @@ BEGIN
       v_age,
       v_years,
       v_trick,
+      v_stance,
       v_modality
     )
     ON CONFLICT (user_id) DO NOTHING;
@@ -628,6 +637,7 @@ RETURNS TABLE (
   age int,
   years_practicing text,
   favorite_trick text,
+  stance text,
   modality public.skate_modality,
   total_points int,
   first_places int,
@@ -658,6 +668,7 @@ BEGIN
       CASE WHEN sp.show_age_publicly THEN sp.age ELSE NULL END AS public_age,
       sp.years_practicing AS y_prac,
       sp.favorite_trick AS fav_trick,
+      sp.stance AS st,
       sp.modality AS mod,
       sp.total_points AS pts,
       sp.first_places AS p1,
@@ -689,6 +700,7 @@ BEGIN
     r.public_age,
     r.y_prac,
     r.fav_trick,
+    r.st,
     r.mod,
     r.pts,
     r.p1,

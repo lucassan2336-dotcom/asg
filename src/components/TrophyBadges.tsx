@@ -1,5 +1,5 @@
-import { Trophy, Medal, Flame, Shield } from "lucide-react";
-import type { SkateModality, TrophyTier } from "@/lib/ranking";
+import { Trophy, Medal, Flame, Shield, Footprints } from "lucide-react";
+import type { SkateModality, SkateStance, TrophyTier } from "@/lib/ranking";
 
 export function RankingTrophyBadge({
   tier,
@@ -112,6 +112,27 @@ export function ModalityBadge({
     >
       {isStreet ? <Flame className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
       {isStreet ? "Street" : "Vert"}
+    </span>
+  );
+}
+
+export function StanceBadge({
+  stance,
+  size = "md",
+}: {
+  stance: SkateStance | null | undefined;
+  size?: "sm" | "md";
+}) {
+  if (!stance) return null;
+  const label = stance === "goofy" ? "Goofy" : "Regular";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-sm border-2 border-ink bg-secondary font-condensed font-bold uppercase tracking-widest text-ink ${
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
+      }`}
+    >
+      <Footprints className="h-3.5 w-3.5 text-rust" />
+      Base: {label}
     </span>
   );
 }

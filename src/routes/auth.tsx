@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { safeRedirect, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
-import type { AccountKind, SkateModality } from "@/lib/ranking";
+import type { AccountKind, SkateModality, SkateStance } from "@/lib/ranking";
 
 type AuthSearch = { redirect?: string | undefined };
 
@@ -34,6 +34,7 @@ function AuthPage() {
   const [age, setAge] = useState("");
   const [yearsPracticing, setYearsPracticing] = useState("");
   const [favoriteTrick, setFavoriteTrick] = useState("");
+  const [stance, setStance] = useState<SkateStance | "">("regular");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -96,6 +97,10 @@ function AuthPage() {
                 accountType === "skatista" ? yearsPracticing.trim().slice(0, 60) || null : null,
               favorite_trick:
                 accountType === "skatista" ? favoriteTrick.trim().slice(0, 80) || null : null,
+              stance:
+                accountType === "skatista" && (stance === "regular" || stance === "goofy")
+                  ? stance
+                  : null,
             },
             emailRedirectTo: window.location.origin,
           },
@@ -119,8 +124,9 @@ function AuthPage() {
                 user_id: uid,
                 full_name: cleanName,
                 age: parsedAge,
-                years_practicing: yearsPracticing.trim().slice(0, 60) || null,
-                favorite_trick: favoriteTrick.trim().slice(0, 80) || null,
+                years_practicing: yearsPracticing.trim().slice(0, 60) || "",
+                favorite_trick: favoriteTrick.trim().slice(0, 80) || "",
+                stance: stance === "regular" || stance === "goofy" ? stance : null,
                 modality: selectedModality,
               },
               { onConflict: "user_id" },
@@ -348,7 +354,18 @@ function AuthPage() {
                           </p>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="block">
+                            <span className="eyebrow">Base (Regular / Goofy)</span>
+                            <select
+                              className="field mt-1"
+                              value={stance}
+                              onChange={(e) => setStance(e.target.value as SkateStance | "")}
+                            >
+                              <option value="regular">Regular (pé esquerdo na frente)</option>
+                              <option value="goofy">Goofy (pé direito na frente)</option>
+                            </select>
+                          </label>
                           <label className="block">
                             <span className="eyebrow">Idade (opcional)</span>
                             <input
