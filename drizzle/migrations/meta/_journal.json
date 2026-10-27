@@ -57,6 +57,13 @@
       "when": 1793060400000,
       "tag": "0007_security_and_integrity_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793084400000,
+      "tag": "0008_member_and_role_management",
+      "breakpoints": true
     }
   ]
 }

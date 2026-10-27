@@ -21,17 +21,21 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { ApplicationStatusBadge } from "@/components/ApplicationStatus";
+import { updateUserRole } from "@/components/MembersRolesPanel";
+import { useSession } from "@/lib/auth";
 import type { Database } from "@/integrations/supabase/types";
 
 type Application = Database["public"]["Tables"]["membership_applications"]["Row"];
 type Decision = { application: Application; action: "approve" | "reject" | "reopen" };
 
 export function ApplicationsPanel() {
+  const { user: currentUser } = useSession();
   const client = useQueryClient();
   const [selected, setSelected] = useState<Application | null>(null);
   const [decision, setDecision] = useState<Decision | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [roleBusy, setRoleBusy] = useState(false);
   const [filter, setFilter] = useState("todos");
 
   const {
@@ -74,6 +78,50 @@ export function ApplicationsPanel() {
       return data;
     },
   });
+
+  const { data: allUserRoles = [] } = useQuery({
+    queryKey: ["admin-user-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const hasUserRole = (userId: string, role: "associado" | "diretoria") =>
+    allUserRoles.some((r) => r.user_id === userId && r.role === role);
+
+  async function handleToggleUserRole(
+    targetUserId: string,
+    fullName: string,
+    role: "associado" | "diretoria",
+    grant: boolean,
+  ) {
+    if (roleBusy) return;
+    if (targetUserId === currentUser?.id && role === "diretoria" && !grant) {
+      toast.error("Você não pode remover sua própria função de diretoria.");
+      return;
+    }
+    setRoleBusy(true);
+    try {
+      await updateUserRole(targetUserId, role, grant);
+      const label = role === "diretoria" ? "Diretoria" : "Associado";
+      toast.success(
+        grant
+          ? `${fullName} selecionado como ${label}.`
+          : `Função de ${label} removida de ${fullName}.`,
+      );
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["admin-user-roles"] }),
+        client.invalidateQueries({ queryKey: ["registered-users-diretoria"] }),
+        client.invalidateQueries({ queryKey: ["my-roles"] }),
+      ]);
+    } catch {
+      toast.error("Não foi possível alterar a função deste cadastro.");
+    } finally {
+      setRoleBusy(false);
+    }
+  }
 
   const person = (id: string | null) =>
     people.find((p) => p.id === id)?.full_name || "Membro da Diretoria";
@@ -347,6 +395,73 @@ export function ApplicationsPanel() {
                   </div>
                 )}
               </dl>
+
+              {/* Funções atribuídas ao cadastro (Associado / Diretoria) */}
+              <div className="border-t border-border pt-3">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-foreground mb-2">
+                  Funções do Cadastro no Sistema
+                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/30 p-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-muted-foreground font-semibold">Perfis ativos:</span>
+                    {hasUserRole(selected.user_id, "diretoria") && (
+                      <span className="rounded-sm border border-amber-700 bg-amber-100 px-2 py-0.5 font-condensed font-bold uppercase text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+                        Diretoria
+                      </span>
+                    )}
+                    {hasUserRole(selected.user_id, "associado") && (
+                      <span className="rounded-sm border border-emerald-700 bg-emerald-100 px-2 py-0.5 font-condensed font-bold uppercase text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200">
+                        Associado
+                      </span>
+                    )}
+                    {!hasUserRole(selected.user_id, "diretoria") &&
+                      !hasUserRole(selected.user_id, "associado") && (
+                        <span className="text-muted-foreground">Nenhuma função atribuída</span>
+                      )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={roleBusy}
+                      onClick={() =>
+                        handleToggleUserRole(
+                          selected.user_id,
+                          selected.full_name,
+                          "associado",
+                          !hasUserRole(selected.user_id, "associado"),
+                        )
+                      }
+                    >
+                      {hasUserRole(selected.user_id, "associado")
+                        ? "Remover Associado"
+                        : "Definir como Associado"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={
+                        roleBusy ||
+                        (selected.user_id === currentUser?.id &&
+                          hasUserRole(selected.user_id, "diretoria"))
+                      }
+                      onClick={() =>
+                        handleToggleUserRole(
+                          selected.user_id,
+                          selected.full_name,
+                          "diretoria",
+                          !hasUserRole(selected.user_id, "diretoria"),
+                        )
+                      }
+                    >
+                      {hasUserRole(selected.user_id, "diretoria")
+                        ? "Remover Diretoria"
+                        : "Definir como Diretoria"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
               {/* Histórico interno confidencial */}
               <div className="border-t border-border pt-3">

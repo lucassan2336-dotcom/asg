@@ -7,6 +7,7 @@ import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { useMyRoles, useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { ApplicationsPanel } from "@/components/ApplicationsPanel";
+import { MembersRolesPanel } from "@/components/MembersRolesPanel";
 import { FinancePanel } from "@/components/FinancePanel";
 import { PagesManagementPanel } from "@/components/PagesManagementPanel";
 
@@ -14,15 +15,16 @@ export const Route = createFileRoute("/_authenticated/diretoria")({
   head: () =>
     seo(
       "Painel da diretoria",
-      "Análise de solicitações, gestão financeira, edição de páginas, avisos e eventos da A.S.G.",
+      "Análise de solicitações, cadastros e funções, gestão financeira, edição de páginas, avisos e eventos da A.S.G.",
     ),
   component: DiretoriaPage,
 });
 
-type Tab = "solicitacoes" | "financeiro" | "paginas" | "avisos" | "eventos";
+type Tab = "solicitacoes" | "cadastros" | "financeiro" | "paginas" | "avisos" | "eventos";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "solicitacoes", label: "Solicitações" },
+  { id: "cadastros", label: "Cadastros e Funções" },
   { id: "financeiro", label: "Financeiro" },
   { id: "paginas", label: "Páginas do Site" },
   { id: "avisos", label: "Avisos" },
@@ -76,6 +78,7 @@ function DiretoriaPage() {
           ))}
         </div>
         {tab === "solicitacoes" && <ApplicationsPanel />}
+        {tab === "cadastros" && <MembersRolesPanel />}
         {tab === "financeiro" && <FinancePanel />}
         {tab === "paginas" && <PagesManagementPanel />}
         {tab === "avisos" && <AnnouncementsPanel />}

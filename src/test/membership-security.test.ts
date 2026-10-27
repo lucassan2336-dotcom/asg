@@ -34,6 +34,7 @@ beforeAll(async () => {
     "0005_financial_management_expansion",
     "0006_site_pages_editable_by_diretoria",
     "0007_security_and_integrity_hardening",
+    "0008_member_and_role_management",
   ]) {
     await db.exec(readFileSync(`drizzle/migrations/${file}.sql`, "utf8"));
   }
@@ -235,11 +236,73 @@ describe.sequential("Associação: três perfis em banco isolado", () => {
     await expect(
       db.exec(`INSERT INTO public.user_roles(user_id, role) VALUES ('${applicant}', 'diretoria')`),
     ).rejects.toThrow();
+    await expect(
+      db.query(`SELECT public.set_user_role_by_diretoria('${applicant}', 'diretoria', true, NULL)`),
+    ).rejects.toThrow(/Acesso negado/);
     expect(
       await value(
         `SELECT count(*)::int AS value FROM public.user_roles WHERE user_id = '${applicant}' AND role = 'diretoria'`,
       ),
     ).toBe(0);
+  });
+
+  it("diretoria seleciona outros cadastros como diretoria ou associado com auditoria e bloqueio de auto-remoção", async () => {
+    await asUser(board);
+
+    // 1. Diretoria lista todos os cadastros
+    const { rows: allUsers } = await db.query<{
+      user_id: string;
+      is_associado: boolean;
+      is_diretoria: boolean;
+    }>(
+      `SELECT user_id, is_associado, is_diretoria FROM public.list_registered_users_for_diretoria()`,
+    );
+    expect(allUsers.length).toBe(3);
+
+    // 2. Diretoria promove o cadastro 'other' para associado e depois para diretoria
+    await db.query(
+      `SELECT public.set_user_role_by_diretoria('${other}', 'associado', true, 'Associado homologado pela diretoria')`,
+    );
+    await db.query(
+      `SELECT public.set_user_role_by_diretoria('${other}', 'diretoria', true, 'Eleito para a diretoria')`,
+    );
+
+    expect(
+      await value(
+        `SELECT count(*)::int AS value FROM public.user_roles WHERE user_id = '${other}' AND role = 'associado'`,
+      ),
+    ).toBe(1);
+    expect(
+      await value(
+        `SELECT count(*)::int AS value FROM public.user_roles WHERE user_id = '${other}' AND role = 'diretoria'`,
+      ),
+    ).toBe(1);
+
+    // 3. Diretoria revoga a função de diretoria de 'other'
+    await db.query(
+      `SELECT public.set_user_role_by_diretoria('${other}', 'diretoria', false, 'Fim do mandato')`,
+    );
+    expect(
+      await value(
+        `SELECT count(*)::int AS value FROM public.user_roles WHERE user_id = '${other}' AND role = 'diretoria'`,
+      ),
+    ).toBe(0);
+
+    // 4. Membro da diretoria é impedido de remover sua própria função de diretoria
+    await expect(
+      db.query(`SELECT public.set_user_role_by_diretoria('${board}', 'diretoria', false, NULL)`),
+    ).rejects.toThrow(/própria função de diretoria/);
+
+    await expect(
+      db.exec(`DELETE FROM public.user_roles WHERE user_id = '${board}' AND role = 'diretoria'`),
+    ).rejects.toThrow(/própria função de diretoria/);
+
+    // 5. Registro de auditoria gerado
+    expect(
+      await value(
+        `SELECT count(*)::int AS value FROM public.audit_logs WHERE record_id = '${other}' AND action = 'conceder_funcao_diretoria'`,
+      ),
+    ).toBe(1);
   });
 });
 
