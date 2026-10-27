@@ -191,15 +191,15 @@ export function FinanceTransactionDialog({
           .update({
             entry_type: parseResult.data.entry_type,
             description: parseResult.data.description,
-            category_id: parseResult.data.category_id,
+            category_id: parseResult.data.category_id ?? null,
             amount: parseResult.data.amount,
             occurred_on: parseResult.data.occurred_on,
-            competency_date: parseResult.data.competency_date,
-            settlement_date: parseResult.data.settlement_date,
-            payment_method: parseResult.data.payment_method,
+            competency_date: parseResult.data.competency_date ?? null,
+            settlement_date: parseResult.data.settlement_date ?? null,
+            payment_method: parseResult.data.payment_method ?? null,
             status: parseResult.data.status,
-            donor_name: parseResult.data.donor_name,
-            notes: parseResult.data.notes,
+            donor_name: parseResult.data.donor_name ?? null,
+            notes: parseResult.data.notes ?? null,
           })
           .eq("id", transactionId);
 
@@ -216,16 +216,17 @@ export function FinanceTransactionDialog({
           .from("financial_transactions")
           .insert({
             entry_type: parseResult.data.entry_type,
+            kind: parseResult.data.entry_type === "despesa" ? "despesa" : "receita",
             description: parseResult.data.description,
-            category_id: parseResult.data.category_id,
+            category_id: parseResult.data.category_id ?? null,
             amount: parseResult.data.amount,
             occurred_on: parseResult.data.occurred_on,
-            competency_date: parseResult.data.competency_date,
-            settlement_date: parseResult.data.settlement_date,
-            payment_method: parseResult.data.payment_method,
+            competency_date: parseResult.data.competency_date ?? null,
+            settlement_date: parseResult.data.settlement_date ?? null,
+            payment_method: parseResult.data.payment_method ?? null,
             status: parseResult.data.status,
-            donor_name: parseResult.data.donor_name,
-            notes: parseResult.data.notes,
+            donor_name: parseResult.data.donor_name ?? null,
+            notes: parseResult.data.notes ?? null,
             idempotency_key: idempotencyKey,
           })
           .select("id")
