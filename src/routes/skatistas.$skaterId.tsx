@@ -126,13 +126,25 @@ function PublicSkaterProfilePage() {
             <div className="lg:col-span-5 grid grid-cols-2 gap-4 rounded-md border-2 border-cream/25 bg-cream/5 p-5">
               <div className="border-r border-cream/15 pr-4">
                 <span className="block font-condensed text-xs font-bold uppercase tracking-widest text-cream/70">
-                  Posição no Ranking {skater.modality === "street" ? "Street" : "Vert"}
+                  {skater.modality === "escolher_depois"
+                    ? "Situação no Ranking"
+                    : skater.modality === "versatil"
+                      ? "Posição nos Rankings"
+                      : `Posição no Ranking ${skater.modality === "street" ? "Street" : "Vert"}`}
                 </span>
-                <p className="mt-1 font-display text-5xl text-amber">{skater.rank_position}º</p>
+                <p className="mt-1 font-display text-5xl text-amber">
+                  {skater.modality === "escolher_depois"
+                    ? "—"
+                    : skater.rank_position > 0
+                      ? `${skater.rank_position}º`
+                      : "—"}
+                </p>
                 <span className="text-[11px] text-cream/60">
-                  {skater.trophy_tier
-                    ? `Pódio Oficial (${skater.trophy_tier.toUpperCase()})`
-                    : "Classificação Geral"}
+                  {skater.modality === "escolher_depois"
+                    ? "Modalidade em Aberto (Sem ranking)"
+                    : skater.trophy_tier
+                      ? `Pódio Oficial (${skater.trophy_tier.toUpperCase()})`
+                      : "Classificação Geral"}
                 </span>
               </div>
 

@@ -55,6 +55,7 @@ beforeAll(async () => {
     "0007_security_and_integrity_hardening",
     "0008_member_and_role_management",
     "0009_skaters_associates_ranking_system",
+    "0010_expand_skater_modalities",
   ]) {
     await db.exec(readFileSync(`drizzle/migrations/${file}.sql`, "utf8"));
   }
@@ -538,7 +539,7 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
       },
     ];
 
-    const ranked = computeModalityRanking(sample, "podium_counts");
+    const ranked = computeModalityRanking(sample, "street", "podium_counts");
     expect(ranked[0]?.skater_id).toBe("1");
     expect(ranked[0]?.rank_position).toBe(1);
     expect(ranked[0]?.trophy_tier).toBe("ouro");
@@ -546,5 +547,106 @@ describe.sequential("Sistema de Skatistas, Associados, Resultados e Ranking — 
     expect(ranked[1]?.rank_position).toBe(2);
     expect(ranked[1]?.trophy_tier).toBe("prata");
     expect(ranked[1]?.age).toBeNull(); // show_age_publicly = false respeitado
+  });
+
+  it("16. Skatista Versátil (Street + Vert) participa e pontua em ambos os rankings oficiais", async () => {
+    const versatileUser = "90000000-0000-0000-0000-000000000055";
+    await db.exec(`
+      RESET ROLE;
+      INSERT INTO auth.users(id, email, email_confirmed_at, raw_user_meta_data) VALUES
+      ('${versatileUser}', 'versatil@asg.invalid', now(), '{"full_name":"Gabi Versatil","account_type":"skatista","modality":"versatil","age":22,"stance":"goofy"}');
+    `);
+
+    // Skatista versátil aparece na consulta de ranking de Street E de Vert
+    const { rows: streetRows } = await db.query<{ user_id: string }>(
+      `SELECT user_id FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${versatileUser}'`,
+    );
+    expect(streetRows.length).toBe(1);
+
+    const { rows: vertRows } = await db.query<{ user_id: string }>(
+      `SELECT user_id FROM public.get_modality_ranking('vert'::public.skate_modality) WHERE user_id = '${versatileUser}'`,
+    );
+    expect(vertRows.length).toBe(1);
+
+    // Skatista versátil pode ser colocado em pódio de Street e de Vert
+    const { rows: versSkater } = await db.query<{ id: string }>(
+      `SELECT id FROM public.skater_profiles WHERE user_id = '${versatileUser}'`,
+    );
+    const versId = versSkater[0]!.id;
+
+    const { rows: stSkater1 } = await db.query<{ id: string }>(
+      `SELECT id FROM public.skater_profiles WHERE user_id = '${streetSkater1}'`,
+    );
+    const { rows: stSkater2 } = await db.query<{ id: string }>(
+      `SELECT id FROM public.skater_profiles WHERE user_id = '${streetSkater2}'`,
+    );
+
+    await asUser(boardUser);
+    await db.exec(`
+      INSERT INTO public.championship_podiums (
+        championship_name, event_date, modality,
+        first_place_skater_id, second_place_skater_id, third_place_skater_id,
+        first_points, second_points, third_points
+      ) VALUES (
+        'Circuito Misto Street 2026', '2026-09-01', 'street',
+        '${versId}', '${stSkater1[0]!.id}', '${stSkater2[0]!.id}',
+        100, 70, 50
+      );
+    `);
+
+    // No ranking de Street, a pontuação de 100 PTS foi somada para Gabi Versatil
+    const { rows: versStreetRank } = await db.query<{
+      total_points: number;
+      rank_position: number;
+    }>(
+      `SELECT total_points, rank_position FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${versatileUser}'`,
+    );
+    expect(versStreetRank[0]?.total_points).toBe(100);
+
+    // No ranking de Vert, os pontos do campeonato de Street NÃO contaminam
+    const { rows: versVertRank } = await db.query<{ total_points: number }>(
+      `SELECT total_points FROM public.get_modality_ranking('vert'::public.skate_modality) WHERE user_id = '${versatileUser}'`,
+    );
+    expect(versVertRank[0]?.total_points).toBe(0);
+  });
+
+  it("17. Skatista com modalidade Escolher Depois (em aberto) é skatista mas não participa do ranking", async () => {
+    const openUser = "90000000-0000-0000-0000-000000000066";
+    await db.exec(`
+      RESET ROLE;
+      INSERT INTO auth.users(id, email, email_confirmed_at, raw_user_meta_data) VALUES
+      ('${openUser}', 'aberto@asg.invalid', now(), '{"full_name":"Rafa Em Aberto","account_type":"skatista","modality":"escolher_depois","age":18}');
+    `);
+
+    // Possui perfil de skatista criado no banco
+    const { rows: profileRows } = await db.query<{ modality: string; is_active: boolean }>(
+      `SELECT modality::text, is_active FROM public.skater_profiles WHERE user_id = '${openUser}'`,
+    );
+    expect(profileRows.length).toBe(1);
+    expect(profileRows[0]?.modality).toBe("escolher_depois");
+    expect(profileRows[0]?.is_active).toBe(true);
+
+    // NÃO aparece no ranking de Street
+    const { rows: stRows } = await db.query(
+      `SELECT user_id FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${openUser}'`,
+    );
+    expect(stRows.length).toBe(0);
+
+    // NÃO aparece no ranking de Vert
+    const { rows: vtRows } = await db.query(
+      `SELECT user_id FROM public.get_modality_ranking('vert'::public.skate_modality) WHERE user_id = '${openUser}'`,
+    );
+    expect(vtRows.length).toBe(0);
+
+    // Diretoria pode alterar a modalidade depois
+    await asUser(boardUser);
+    await db.exec(
+      `SELECT public.admin_manage_skater_profile('${openUser}', 'street'::public.skate_modality, true);`,
+    );
+
+    const { rows: updatedRows } = await db.query(
+      `SELECT user_id FROM public.get_modality_ranking('street'::public.skate_modality) WHERE user_id = '${openUser}'`,
+    );
+    expect(updatedRows.length).toBe(1);
   });
 });

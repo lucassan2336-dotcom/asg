@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AccountKind = "skatista" | "associado";
-export type SkateModality = "street" | "vert";
+export type SkateModality = "street" | "vert" | "versatil" | "escolher_depois";
 export type SkateStance = "regular" | "goofy";
 export type TrophyTier = "ouro" | "prata" | "bronze";
 export type TiebreakerRule = "podium_counts" | "shared_position_only";
@@ -195,9 +195,16 @@ export async function uploadProfileAvatar(userId: string, file: File): Promise<s
  */
 export function computeModalityRanking(
   skaters: SkaterProfileRow[],
+  targetModality?: SkateModality,
   tiebreakerRule: TiebreakerRule = "podium_counts",
 ): RankingEntry[] {
-  const active = skaters.filter((s) => s.is_active);
+  const active = skaters.filter((s) => {
+    if (!s.is_active || s.modality === "escolher_depois") return false;
+    if (targetModality && targetModality !== "versatil") {
+      return s.modality === targetModality || s.modality === "versatil";
+    }
+    return true;
+  });
 
   const sorted = [...active].sort((a, b) => {
     if (b.total_points !== a.total_points) return b.total_points - a.total_points;
@@ -287,11 +294,11 @@ export function useModalityRanking(modality: SkateModality) {
       const { data: skaters, error } = await (supabase as any)
         .from("skater_profiles")
         .select("*")
-        .eq("modality", modality)
+        .or(`modality.eq.${modality},modality.eq.versatil`)
         .eq("is_active", true);
 
       if (error || !skaters) return [];
-      return computeModalityRanking(skaters as SkaterProfileRow[]);
+      return computeModalityRanking(skaters as SkaterProfileRow[], modality);
     },
   });
 }
@@ -352,15 +359,60 @@ export function usePublicSkaterProfile(skaterId: string) {
       }
 
       if (!rankEntry) {
-        const { data: modalitySkaters } = await (supabase as any)
-          .from("skater_profiles")
-          .select("*")
-          .eq("modality", modality)
-          .eq("is_active", true);
-        const computed = computeModalityRanking(
-          (modalitySkaters ?? [rawSkater]) as SkaterProfileRow[],
-        );
-        rankEntry = computed.find((r) => r.skater_id === skaterId);
+        if (modality === "escolher_depois") {
+          rankEntry = {
+            skater_id: rawSkater.id,
+            user_id: rawSkater.user_id,
+            full_name: rawSkater.full_name,
+            avatar_url: rawSkater.avatar_url ?? null,
+            age: rawSkater.show_age_publicly ? rawSkater.age : null,
+            years_practicing: rawSkater.years_practicing ?? null,
+            favorite_trick: rawSkater.favorite_trick ?? null,
+            stance: (rawSkater.stance as SkateStance | null) ?? null,
+            modality: "escolher_depois",
+            total_points: 0,
+            first_places: 0,
+            second_places: 0,
+            third_places: 0,
+            rank_position: 0,
+            trophy_tier: null,
+          };
+        } else if (modality === "versatil") {
+          const { data: streetRank } = await (supabase as any).rpc("get_modality_ranking", {
+            _modality: "street",
+          });
+          const foundStreet = Array.isArray(streetRank)
+            ? streetRank.find((r: any) => r.skater_id === skaterId)
+            : undefined;
+          rankEntry = {
+            skater_id: rawSkater.id,
+            user_id: rawSkater.user_id,
+            full_name: rawSkater.full_name,
+            avatar_url: rawSkater.avatar_url ?? null,
+            age: rawSkater.show_age_publicly ? rawSkater.age : null,
+            years_practicing: rawSkater.years_practicing ?? null,
+            favorite_trick: rawSkater.favorite_trick ?? null,
+            stance: (rawSkater.stance as SkateStance | null) ?? null,
+            modality: "versatil",
+            total_points: Number(rawSkater.total_points ?? 0),
+            first_places: Number(rawSkater.first_places ?? 0),
+            second_places: Number(rawSkater.second_places ?? 0),
+            third_places: Number(rawSkater.third_places ?? 0),
+            rank_position: foundStreet?.rank_position ? Number(foundStreet.rank_position) : 1,
+            trophy_tier: (foundStreet?.trophy_tier as TrophyTier | null) ?? null,
+          };
+        } else {
+          const { data: modalitySkaters } = await (supabase as any)
+            .from("skater_profiles")
+            .select("*")
+            .or(`modality.eq.${modality},modality.eq.versatil`)
+            .eq("is_active", true);
+          const computed = computeModalityRanking(
+            (modalitySkaters ?? [rawSkater]) as SkaterProfileRow[],
+            modality,
+          );
+          rankEntry = computed.find((r) => r.skater_id === skaterId);
+        }
       }
 
       if (!rankEntry) return null;
@@ -463,8 +515,10 @@ export function useActiveSkatersByModality(modality?: SkateModality) {
         .eq("is_active", true)
         .order("full_name", { ascending: true });
 
-      if (modality) {
-        query = query.eq("modality", modality);
+      if (modality && modality !== "escolher_depois") {
+        query = query.or(`modality.eq.${modality},modality.eq.versatil`);
+      } else {
+        query = query.neq("modality", "escolher_depois");
       }
 
       const { data, error } = await query;

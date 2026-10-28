@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Flame, Shield, UserCheck, Trophy, CheckCircle2 } from "lucide-react";
+import { Flame, Shield, UserCheck, Trophy, CheckCircle2, Sparkles, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
@@ -55,8 +55,11 @@ function AuthPage() {
         toast.error("Informe seu nome completo (mínimo de 3 caracteres).");
         return;
       }
-      if (accountType === "skatista" && modality !== "street" && modality !== "vert") {
-        toast.error("Selecione obrigatoriamente sua modalidade principal: Street ou Vert.");
+      if (
+        accountType === "skatista" &&
+        !["street", "vert", "versatil", "escolher_depois"].includes(modality)
+      ) {
+        toast.error("Selecione sua modalidade: Street, Vert, Versátil ou Escolher Depois.");
         return;
       }
       if (age.trim()) {
@@ -80,7 +83,8 @@ function AuthPage() {
         const cleanName = fullName.trim().slice(0, 100);
         const parsedAge = age.trim() ? Number(age) : null;
         const selectedModality: SkateModality =
-          accountType === "skatista" && (modality === "street" || modality === "vert")
+          accountType === "skatista" &&
+          ["street", "vert", "versatil", "escolher_depois"].includes(modality)
             ? modality
             : "street";
 
@@ -264,7 +268,7 @@ function AuthPage() {
                         1. Escolha o tipo da sua conta (Obrigatório)
                       </span>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {/* OPÇÃO A — SKATISTA LOCAL */}
+                        {/* SKATISTA LOCAL */}
                         <button
                           type="button"
                           onClick={() => setAccountType("skatista")}
@@ -276,7 +280,7 @@ function AuthPage() {
                         >
                           <div className="flex w-full items-center justify-between">
                             <span className="inline-flex items-center gap-1.5 rounded-sm border border-ink bg-rust px-2 py-0.5 font-condensed text-xs font-bold uppercase tracking-wider text-cream">
-                              <Trophy className="h-3.5 w-3.5" /> Opção A
+                              <Trophy className="h-3.5 w-3.5" /> Skatista Local
                             </span>
                             {accountType === "skatista" && (
                               <CheckCircle2 className="h-5 w-5 text-rust" />
@@ -284,12 +288,12 @@ function AuthPage() {
                           </div>
                           <h3 className="mt-2 font-display text-xl uppercase">Skatista Local</h3>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Cria automaticamente seu perfil competitivo público e vincula você ao
-                            ranking oficial da sua modalidade (Street ou Vert).
+                            Cria seu perfil esportivo público e vincula você às competições oficiais
+                            da A.S.G.
                           </p>
                         </button>
 
-                        {/* OPÇÃO B — ASSOCIADO */}
+                        {/* ASSOCIADO */}
                         <button
                           type="button"
                           onClick={() => setAccountType("associado")}
@@ -301,7 +305,7 @@ function AuthPage() {
                         >
                           <div className="flex w-full items-center justify-between">
                             <span className="inline-flex items-center gap-1.5 rounded-sm border border-ink bg-olive px-2 py-0.5 font-condensed text-xs font-bold uppercase tracking-wider text-cream">
-                              <UserCheck className="h-3.5 w-3.5" /> Opção B
+                              <UserCheck className="h-3.5 w-3.5" /> Associado
                             </span>
                             {accountType === "associado" && (
                               <CheckCircle2 className="h-5 w-5 text-olive" />
@@ -310,7 +314,7 @@ function AuthPage() {
                           <h3 className="mt-2 font-display text-xl uppercase">Associado A.S.G.</h3>
                           <p className="mt-1 text-xs text-muted-foreground">
                             Perfil associativo exclusivo para membros e apoiadores da A.S.G. Não
-                            inclui automaticamente no ranking competitivo.
+                            inclui no ranking competitivo.
                           </p>
                         </button>
                       </div>
@@ -319,10 +323,8 @@ function AuthPage() {
                     {accountType === "skatista" && (
                       <div className="rounded-md border-2 border-ink bg-muted/40 p-4 space-y-4">
                         <div>
-                          <span className="eyebrow block mb-2">
-                            2. Modalidade Principal para o Ranking (Obrigatório)
-                          </span>
-                          <div className="grid grid-cols-2 gap-3">
+                          <span className="eyebrow block mb-2">2. Modalidade para o Ranking</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button
                               type="button"
                               onClick={() => setModality("street")}
@@ -347,10 +349,57 @@ function AuthPage() {
                               <Shield className="h-4 w-4" />
                               Vert
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => setModality("versatil")}
+                              className={`flex items-center justify-center gap-2 rounded-sm border-2 px-4 py-3 font-condensed text-sm font-bold uppercase tracking-wider transition-all ${
+                                modality === "versatil"
+                                  ? "border-ink bg-olive text-cream shadow-stamp"
+                                  : "border-ink/40 bg-card text-foreground hover:border-ink"
+                              }`}
+                            >
+                              <Sparkles className="h-4 w-4" />
+                              Versátil (Street + Vert)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setModality("escolher_depois")}
+                              className={`flex items-center justify-center gap-2 rounded-sm border-2 px-4 py-3 font-condensed text-sm font-bold uppercase tracking-wider transition-all ${
+                                modality === "escolher_depois"
+                                  ? "border-ink bg-olive text-cream shadow-stamp"
+                                  : "border-ink/40 bg-card text-foreground hover:border-ink"
+                              }`}
+                            >
+                              <Clock className="h-4 w-4" />
+                              Escolher Depois (Em Aberto)
+                            </button>
                           </div>
-                          <p className="mt-1.5 text-xs text-muted-foreground">
-                            Você aparecerá exclusivamente no ranking da modalidade escolhida. A
-                            alteração posterior depende de autorização da diretoria.
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {modality === "versatil" && (
+                              <span className="font-semibold text-foreground">
+                                ✨ <strong>Versátil:</strong> Você poderá participar e pontuar em
+                                ambos os rankings oficiais (Street e Vert).
+                              </span>
+                            )}
+                            {modality === "escolher_depois" && (
+                              <span className="font-semibold text-foreground">
+                                ⏳ <strong>Em Aberto:</strong> Seu cadastro de skatista será criado,
+                                porém você não participará do ranking até definir a modalidade com a
+                                diretoria.
+                              </span>
+                            )}
+                            {modality === "street" && (
+                              <span>
+                                Você participará exclusivamente do ranking oficial de{" "}
+                                <strong>Street</strong>.
+                              </span>
+                            )}
+                            {modality === "vert" && (
+                              <span>
+                                Você participará exclusivamente do ranking oficial de{" "}
+                                <strong>Vert</strong>.
+                              </span>
+                            )}
                           </p>
                         </div>
 

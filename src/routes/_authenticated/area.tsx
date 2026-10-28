@@ -255,7 +255,11 @@ function AreaPage() {
           .eq("user_id", userId);
         if (error) throw error;
       } else {
-        const initialModality = user?.user_metadata?.modality === "vert" ? "vert" : "street";
+        const rawMod = user?.user_metadata?.modality;
+        const initialModality =
+          rawMod === "vert" || rawMod === "versatil" || rawMod === "escolher_depois"
+            ? rawMod
+            : "street";
         const { error } = await (supabase as any).from("skater_profiles").insert({
           user_id: userId,
           full_name: cleanName,
@@ -433,12 +437,20 @@ function AreaPage() {
                 <div className="mt-6 grid grid-cols-2 gap-3 rounded-md border border-cream/20 bg-cream/5 p-4">
                   <div>
                     <span className="block font-condensed text-xs uppercase tracking-widest text-cream/70">
-                      Posição Atual ({skaterProfile?.modality?.toUpperCase() ?? "STREET"})
+                      Posição Atual (
+                      {skaterProfile?.modality === "versatil"
+                        ? "STREET + VERT"
+                        : skaterProfile?.modality === "escolher_depois"
+                          ? "EM ABERTO"
+                          : (skaterProfile?.modality?.toUpperCase() ?? "STREET")}
+                      )
                     </span>
                     <p className="mt-1 font-display text-4xl text-amber">
-                      {publicSkaterData?.skater.rank_position
-                        ? `${publicSkaterData.skater.rank_position}º`
-                        : "—"}
+                      {skaterProfile?.modality === "escolher_depois"
+                        ? "—"
+                        : publicSkaterData?.skater.rank_position
+                          ? `${publicSkaterData.skater.rank_position}º`
+                          : "—"}
                     </p>
                   </div>
                   <div>

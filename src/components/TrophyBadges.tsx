@@ -1,4 +1,4 @@
-import { Trophy, Medal, Flame, Shield, Footprints } from "lucide-react";
+import { Trophy, Medal, Flame, Shield, Footprints, Sparkles, Clock } from "lucide-react";
 import type { SkateModality, SkateStance, TrophyTier } from "@/lib/ranking";
 
 export function RankingTrophyBadge({
@@ -103,15 +103,32 @@ export function ModalityBadge({
   modality: SkateModality;
   size?: "sm" | "md";
 }) {
-  const isStreet = modality === "street";
+  let label = "Street";
+  let bg = "bg-rust text-cream";
+  let Icon = Flame;
+
+  if (modality === "vert") {
+    label = "Vert";
+    bg = "bg-olive text-cream";
+    Icon = Shield;
+  } else if (modality === "versatil") {
+    label = "Versátil (Street + Vert)";
+    bg = "bg-amber-600 text-cream";
+    Icon = Sparkles;
+  } else if (modality === "escolher_depois") {
+    label = "Em Aberto";
+    bg = "bg-muted text-foreground border-dashed";
+    Icon = Clock;
+  }
+
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-sm border-2 border-ink font-condensed font-bold uppercase tracking-widest ${
-        isStreet ? "bg-rust text-cream" : "bg-olive text-cream"
-      } ${size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"}`}
+      className={`inline-flex items-center gap-1 rounded-sm border-2 border-ink font-condensed font-bold uppercase tracking-widest ${bg} ${
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
+      }`}
     >
-      {isStreet ? <Flame className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
-      {isStreet ? "Street" : "Vert"}
+      <Icon className="h-3.5 w-3.5" />
+      {label}
     </span>
   );
 }

@@ -203,6 +203,9 @@ function ModalityRankingView({
                           {entry.trophy_tier && (
                             <RankingTrophyBadge tier={entry.trophy_tier} size="sm" />
                           )}
+                          {entry.modality === "versatil" && (
+                            <ModalityBadge modality="versatil" size="sm" />
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                           {entry.stance && (

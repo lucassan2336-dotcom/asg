@@ -508,6 +508,10 @@ export function MembersRolesPanel() {
                           <option value="none">Fora do Ranking (Associado)</option>
                           <option value="street">Skatista • Street</option>
                           <option value="vert">Skatista • Vert</option>
+                          <option value="versatil">Skatista • Versátil (Street + Vert)</option>
+                          <option value="escolher_depois">
+                            Skatista • Em aberto (Escolher Depois)
+                          </option>
                         </select>
                       </div>
                     </td>

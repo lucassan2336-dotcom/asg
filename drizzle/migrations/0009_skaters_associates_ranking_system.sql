@@ -16,7 +16,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE public.skate_modality AS ENUM ('street', 'vert');
+  CREATE TYPE public.skate_modality AS ENUM ('street', 'vert', 'versatil', 'escolher_depois');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -280,6 +280,10 @@ BEGIN
 
   IF v_modality_raw = 'vert' THEN
     v_modality := 'vert';
+  ELSIF v_modality_raw = 'versatil' THEN
+    v_modality := 'versatil';
+  ELSIF v_modality_raw = 'escolher_depois' THEN
+    v_modality := 'escolher_depois';
   ELSE
     v_modality := 'street';
   END IF;
@@ -474,8 +478,10 @@ BEGIN
       USING ERRCODE = '22023';
   END IF;
 
-  IF v_mod1 <> NEW.modality OR v_mod2 <> NEW.modality OR v_mod3 <> NEW.modality THEN
-    RAISE EXCEPTION 'Todos os colocados do pódio devem pertencer à modalidade % do campeonato.', upper(NEW.modality::text)
+  IF (v_mod1 <> NEW.modality AND v_mod1 <> 'versatil')
+     OR (v_mod2 <> NEW.modality AND v_mod2 <> 'versatil')
+     OR (v_mod3 <> NEW.modality AND v_mod3 <> 'versatil') THEN
+    RAISE EXCEPTION 'Todos os colocados do pódio devem pertencer à modalidade % (ou versátil).', upper(NEW.modality::text)
       USING ERRCODE = '22023';
   END IF;
 
@@ -529,12 +535,13 @@ BEGIN
     FROM public.skater_profiles s
     LEFT JOIN public.championship_podiums cp
       ON cp.status = 'publicado'
-      AND cp.modality = s.modality
+      AND (s.modality = 'versatil' OR cp.modality = s.modality)
       AND (
         cp.first_place_skater_id = s.id
         OR cp.second_place_skater_id = s.id
         OR cp.third_place_skater_id = s.id
       )
+    WHERE s.modality <> 'escolher_depois'
     GROUP BY s.id
   ) calc
   WHERE sp.id = calc.skater_id
@@ -544,6 +551,11 @@ BEGIN
       OR sp.second_places IS DISTINCT FROM coalesce(calc.p2, 0)
       OR sp.third_places IS DISTINCT FROM coalesce(calc.p3, 0)
     );
+
+  UPDATE public.skater_profiles
+  SET total_points = 0, first_places = 0, second_places = 0, third_places = 0, updated_at = now()
+  WHERE modality = 'escolher_depois'
+    AND (total_points <> 0 OR first_places <> 0 OR second_places <> 0 OR third_places <> 0);
 
   PERFORM set_config('asg.internal_ranking_recalc', 'false', true);
 END;
@@ -654,12 +666,16 @@ AS $$
 DECLARE
   v_tiebreaker text := 'podium_counts';
 BEGIN
+  IF _modality NOT IN ('street', 'vert') THEN
+    RETURN;
+  END IF;
+
   SELECT c.tiebreaker_rule INTO v_tiebreaker
   FROM public.ranking_scoring_config c
   WHERE c.id = 1;
 
   RETURN QUERY
-  WITH ranked AS (
+  WITH skater_calc AS (
     SELECT
       sp.id AS s_id,
       sp.user_id AS u_id,
@@ -670,27 +686,48 @@ BEGIN
       sp.favorite_trick AS fav_trick,
       sp.stance AS st,
       sp.modality AS mod,
-      sp.total_points AS pts,
-      sp.first_places AS p1,
-      sp.second_places AS p2,
-      sp.third_places AS p3,
+      coalesce(sum(
+        CASE
+          WHEN cp.first_place_skater_id = sp.id THEN cp.first_points
+          WHEN cp.second_place_skater_id = sp.id THEN cp.second_points
+          WHEN cp.third_place_skater_id = sp.id THEN cp.third_points
+          ELSE 0
+        END
+      ), 0)::int AS pts,
+      count(*) FILTER (WHERE cp.first_place_skater_id = sp.id)::int AS p1,
+      count(*) FILTER (WHERE cp.second_place_skater_id = sp.id)::int AS p2,
+      count(*) FILTER (WHERE cp.third_place_skater_id = sp.id)::int AS p3
+    FROM public.skater_profiles sp
+    LEFT JOIN public.championship_podiums cp
+      ON cp.status = 'publicado'
+      AND cp.modality = _modality
+      AND (
+        cp.first_place_skater_id = sp.id
+        OR cp.second_place_skater_id = sp.id
+        OR cp.third_place_skater_id = sp.id
+      )
+    WHERE sp.is_active = true
+      AND (sp.modality = _modality OR sp.modality = 'versatil')
+    GROUP BY sp.id, sp.user_id, sp.full_name, sp.avatar_url, sp.show_age_publicly, sp.age, sp.years_practicing, sp.favorite_trick, sp.stance, sp.modality
+  ),
+  ranked AS (
+    SELECT
+      sc.*,
       CASE
         WHEN coalesce(v_tiebreaker, 'podium_counts') = 'podium_counts' THEN
           RANK() OVER (
             ORDER BY
-              sp.total_points DESC,
-              sp.first_places DESC,
-              sp.second_places DESC,
-              sp.third_places DESC
+              sc.pts DESC,
+              sc.p1 DESC,
+              sc.p2 DESC,
+              sc.p3 DESC
           )::int
         ELSE
           RANK() OVER (
-            ORDER BY sp.total_points DESC
+            ORDER BY sc.pts DESC
           )::int
       END AS pos
-    FROM public.skater_profiles sp
-    WHERE sp.is_active = true
-      AND sp.modality = _modality
+    FROM skater_calc sc
   )
   SELECT
     r.s_id,
@@ -755,7 +792,7 @@ AS $$
   FROM public.championship_podiums cp
   JOIN public.skater_profiles sp ON sp.id = _skater_id
   WHERE cp.status = 'publicado'
-    AND cp.modality = sp.modality
+    AND (sp.modality = 'versatil' OR cp.modality = sp.modality)
     AND (
       cp.first_place_skater_id = _skater_id
       OR cp.second_place_skater_id = _skater_id
