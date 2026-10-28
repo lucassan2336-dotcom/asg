@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      associate_profiles: {
+        Row: {
+          age: number | null
+          associate_metadata: Json
+          associate_notes: string | null
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          associate_metadata?: Json
+          associate_notes?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          associate_metadata?: Json
+          associate_notes?: string | null
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       association_memberships: {
         Row: {
           application_id: string | null
@@ -117,6 +150,85 @@ export type Database = {
           table_name?: string
         }
         Relationships: []
+      }
+      championship_podiums: {
+        Row: {
+          championship_name: string
+          created_at: string
+          created_by: string | null
+          event_date: string
+          first_place_skater_id: string
+          first_points: number
+          id: string
+          modality: Database["public"]["Enums"]["skate_modality"]
+          notes: string | null
+          second_place_skater_id: string
+          second_points: number
+          status: string
+          third_place_skater_id: string
+          third_points: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          championship_name: string
+          created_at?: string
+          created_by?: string | null
+          event_date: string
+          first_place_skater_id: string
+          first_points: number
+          id?: string
+          modality: Database["public"]["Enums"]["skate_modality"]
+          notes?: string | null
+          second_place_skater_id: string
+          second_points: number
+          status?: string
+          third_place_skater_id: string
+          third_points: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          championship_name?: string
+          created_at?: string
+          created_by?: string | null
+          event_date?: string
+          first_place_skater_id?: string
+          first_points?: number
+          id?: string
+          modality?: Database["public"]["Enums"]["skate_modality"]
+          notes?: string | null
+          second_place_skater_id?: string
+          second_points?: number
+          status?: string
+          third_place_skater_id?: string
+          third_points?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "championship_podiums_first_place_skater_id_fkey"
+            columns: ["first_place_skater_id"]
+            isOneToOne: false
+            referencedRelation: "skater_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "championship_podiums_second_place_skater_id_fkey"
+            columns: ["second_place_skater_id"]
+            isOneToOne: false
+            referencedRelation: "skater_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "championship_podiums_third_place_skater_id_fkey"
+            columns: ["third_place_skater_id"]
+            isOneToOne: false
+            referencedRelation: "skater_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       competition_results: {
         Row: {
@@ -552,28 +664,70 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: Database["public"]["Enums"]["account_kind"]
+          age: number | null
+          avatar_url: string | null
           birth_date: string | null
           created_at: string
           full_name: string
           id: string
           phone: string | null
+          show_age_publicly: boolean
           updated_at: string
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["account_kind"]
+          age?: number | null
+          avatar_url?: string | null
           birth_date?: string | null
           created_at?: string
           full_name?: string
           id: string
           phone?: string | null
+          show_age_publicly?: boolean
           updated_at?: string
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["account_kind"]
+          age?: number | null
+          avatar_url?: string | null
           birth_date?: string | null
           created_at?: string
           full_name?: string
           id?: string
           phone?: string | null
+          show_age_publicly?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      ranking_scoring_config: {
+        Row: {
+          first_place_points: number
+          id: number
+          second_place_points: number
+          third_place_points: number
+          tiebreaker_rule: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          tiebreaker_rule?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          first_place_points?: number
+          id?: number
+          second_place_points?: number
+          third_place_points?: number
+          tiebreaker_rule?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -649,6 +803,69 @@ export type Database = {
         }
         Relationships: []
       }
+      skater_profiles: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          favorite_trick: string
+          first_places: number
+          full_name: string
+          id: string
+          is_active: boolean
+          modality: Database["public"]["Enums"]["skate_modality"]
+          second_places: number
+          show_age_publicly: boolean
+          stance: string | null
+          third_places: number
+          total_points: number
+          updated_at: string
+          user_id: string
+          years_practicing: string
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          favorite_trick?: string
+          first_places?: number
+          full_name: string
+          id?: string
+          is_active?: boolean
+          modality: Database["public"]["Enums"]["skate_modality"]
+          second_places?: number
+          show_age_publicly?: boolean
+          stance?: string | null
+          third_places?: number
+          total_points?: number
+          updated_at?: string
+          user_id: string
+          years_practicing?: string
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          favorite_trick?: string
+          first_places?: number
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          modality?: Database["public"]["Enums"]["skate_modality"]
+          second_places?: number
+          show_age_publicly?: boolean
+          stance?: string | null
+          third_places?: number
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+          years_practicing?: string
+        }
+        Relationships: []
+      }
       sponsors: {
         Row: {
           created_at: string
@@ -708,6 +925,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_manage_skater_profile: {
+        Args: {
+          _is_active?: boolean
+          _modality: Database["public"]["Enums"]["skate_modality"]
+          _target_user_id: string
+        }
+        Returns: string
+      }
       cancel_financial_transaction: {
         Args: { _reason: string; _transaction_id: string }
         Returns: undefined
@@ -725,6 +950,38 @@ export type Database = {
           received_revenues: number
         }[]
       }
+      get_modality_ranking: {
+        Args: { _modality: Database["public"]["Enums"]["skate_modality"] }
+        Returns: {
+          age: number
+          avatar_url: string
+          favorite_trick: string
+          first_places: number
+          full_name: string
+          modality: Database["public"]["Enums"]["skate_modality"]
+          rank_position: number
+          second_places: number
+          skater_id: string
+          stance: string
+          third_places: number
+          total_points: number
+          trophy_tier: string
+          user_id: string
+          years_practicing: string
+        }[]
+      }
+      get_skater_championship_history: {
+        Args: { _skater_id: string }
+        Returns: {
+          championship_id: string
+          championship_name: string
+          event_date: string
+          modality: Database["public"]["Enums"]["skate_modality"]
+          notes: string
+          placement: number
+          points_awarded: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -732,6 +989,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_registered_users_for_diretoria: {
+        Args: never
+        Returns: {
+          birth_date: string
+          created_at: string
+          email: string
+          full_name: string
+          is_associado: boolean
+          is_diretoria: boolean
+          member_since: string
+          membership_status: string
+          phone: string
+          user_id: string
+        }[]
+      }
+      recalculate_all_skater_rankings: { Args: never; Returns: undefined }
       reopen_application: {
         Args: { _application_id: string; _reason: string }
         Returns: undefined
@@ -742,6 +1015,15 @@ export type Database = {
       }
       review_application: {
         Args: { _application_id: string; _approve: boolean; _notes?: string }
+        Returns: undefined
+      }
+      set_user_role_by_diretoria: {
+        Args: {
+          _grant: boolean
+          _notes?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
         Returns: undefined
       }
       write_audit: {
@@ -755,6 +1037,7 @@ export type Database = {
       }
     }
     Enums: {
+      account_kind: "skatista" | "associado"
       announcement_audience: "publico" | "associados"
       app_role: "diretoria" | "associado"
       application_status: "pendente" | "aprovada" | "rejeitada"
@@ -767,6 +1050,7 @@ export type Database = {
         | "cancelado"
       membership_status: "ativa" | "suspensa" | "encerrada"
       registration_status: "inscrito" | "cancelado" | "presente"
+      skate_modality: "street" | "vert" | "versatil" | "escolher_depois"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -894,6 +1178,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_kind: ["skatista", "associado"],
       announcement_audience: ["publico", "associados"],
       app_role: ["diretoria", "associado"],
       application_status: ["pendente", "aprovada", "rejeitada"],
@@ -907,6 +1192,7 @@ export const Constants = {
       ],
       membership_status: ["ativa", "suspensa", "encerrada"],
       registration_status: ["inscrito", "cancelado", "presente"],
+      skate_modality: ["street", "vert", "versatil", "escolher_depois"],
     },
   },
 } as const
