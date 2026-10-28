@@ -54,12 +54,22 @@ function createSupabaseFetch(supabaseUrl: string, supabaseKey: string): typeof f
   };
 }
 
+const ACTIVE_SUPABASE_URL = "https://hriafazfexhtyjhgbmie.supabase.co";
+const ACTIVE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_thtb68jIDTz5FG9PRLAC3g_PUNSG6c9";
+const LEGACY_LOVABLE_PROJECT_ID = "dmfocitpmxyzwrhcmglj";
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
+  const rawUrl = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"] || ACTIVE_SUPABASE_URL;
+  const rawKey =
+    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    ACTIVE_SUPABASE_PUBLISHABLE_KEY;
+
+  const isLegacyInstance = rawUrl.includes(LEGACY_LOVABLE_PROJECT_ID);
+  const SUPABASE_URL = isLegacyInstance ? ACTIVE_SUPABASE_URL : rawUrl;
+  const SUPABASE_PUBLISHABLE_KEY = isLegacyInstance ? ACTIVE_SUPABASE_PUBLISHABLE_KEY : rawKey;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [

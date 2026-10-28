@@ -182,20 +182,62 @@ function AreaPage() {
       const uploadedUrl = await uploadProfileAvatar(userId, file);
       setAvatarUrl(uploadedUrl);
 
-      // Persistir imediatamente no perfil correspondente
-      await (supabase as any).from("profiles").update({ avatar_url: uploadedUrl }).eq("id", userId);
+      // Persistir imediatamente no perfil correspondente no banco de dados
+      const fallbackName = (
+        fullName ||
+        baseProfile?.full_name ||
+        user?.user_metadata?.full_name ||
+        user?.email?.split("@")[0] ||
+        "Membro A.S.G."
+      )
+        .trim()
+        .slice(0, 100);
 
-      if (skaterProfile) {
-        await (supabase as any)
+      const { error: baseErr } = await (supabase as any)
+        .from("profiles")
+        .upsert(
+          {
+            id: userId,
+            full_name: fallbackName,
+            account_type: accountType,
+            avatar_url: uploadedUrl,
+          },
+          { onConflict: "id" }
+        );
+      if (baseErr) throw baseErr;
+
+      if (skaterProfile || accountType === "skatista") {
+        const rawMod = skaterProfile?.modality ?? user?.user_metadata?.modality;
+        const initialModality =
+          rawMod === "vert" || rawMod === "versatil" || rawMod === "escolher_depois"
+            ? rawMod
+            : "street";
+        const { error: skaterErr } = await (supabase as any)
           .from("skater_profiles")
-          .update({ avatar_url: uploadedUrl })
-          .eq("user_id", userId);
+          .upsert(
+            {
+              user_id: userId,
+              full_name: fallbackName,
+              avatar_url: uploadedUrl,
+              modality: initialModality,
+            },
+            { onConflict: "user_id" }
+          );
+        if (skaterErr) throw skaterErr;
       }
-      if (associateProfile) {
-        await (supabase as any)
+
+      if (associateProfile || accountType === "associado") {
+        const { error: assocErr } = await (supabase as any)
           .from("associate_profiles")
-          .update({ avatar_url: uploadedUrl })
-          .eq("user_id", userId);
+          .upsert(
+            {
+              user_id: userId,
+              full_name: fallbackName,
+              avatar_url: uploadedUrl,
+            },
+            { onConflict: "user_id" }
+          );
+        if (assocErr) throw assocErr;
       }
 
       toast.success("Foto de perfil atualizada com sucesso!");
@@ -221,8 +263,8 @@ function AreaPage() {
     let parsedAge: number | null = null;
     if (age.trim()) {
       const n = Number(age);
-      if (!Number.isInteger(n) || n < 3 || n > 110) {
-        toast.error("Informe uma idade válida entre 3 e 110 anos.");
+      if (!Number.isInteger(n) || n < 4 || n > 100) {
+        toast.error("Informe uma idade válida entre 4 e 100 anos.");
         return;
       }
       parsedAge = n;
@@ -230,15 +272,20 @@ function AreaPage() {
 
     setSavingProfile(true);
     try {
-      await (supabase as any)
+      const { error: baseErr } = await (supabase as any)
         .from("profiles")
-        .update({
-          full_name: cleanName,
-          avatar_url: avatarUrl,
-          age: parsedAge,
-          show_age_publicly: showAgePublicly,
-        })
-        .eq("id", userId);
+        .upsert(
+          {
+            id: userId,
+            full_name: cleanName,
+            account_type: "skatista",
+            avatar_url: avatarUrl,
+            age: parsedAge,
+            show_age_publicly: showAgePublicly,
+          },
+          { onConflict: "id" }
+        );
+      if (baseErr) throw baseErr;
 
       if (skaterProfile) {
         const { error } = await (supabase as any)
@@ -305,8 +352,8 @@ function AreaPage() {
     let parsedAge: number | null = null;
     if (age.trim()) {
       const n = Number(age);
-      if (!Number.isInteger(n) || n < 3 || n > 110) {
-        toast.error("Informe uma idade válida entre 3 e 110 anos.");
+      if (!Number.isInteger(n) || n < 4 || n > 100) {
+        toast.error("Informe uma idade válida entre 4 e 100 anos.");
         return;
       }
       parsedAge = n;
@@ -316,32 +363,31 @@ function AreaPage() {
     try {
       const { error: baseErr } = await (supabase as any)
         .from("profiles")
-        .update({
-          full_name: cleanName,
-          phone: cleanPhone || null,
-          avatar_url: avatarUrl,
-          age: parsedAge,
-        })
-        .eq("id", userId);
+        .upsert(
+          {
+            id: userId,
+            full_name: cleanName,
+            account_type: "associado",
+            phone: cleanPhone || null,
+            avatar_url: avatarUrl,
+            age: parsedAge,
+          },
+          { onConflict: "id" }
+        );
       if (baseErr) throw baseErr;
 
-      if (associateProfile) {
-        await (supabase as any)
-          .from("associate_profiles")
-          .update({
+      const { error: assocErr } = await (supabase as any)
+        .from("associate_profiles")
+        .upsert(
+          {
+            user_id: userId,
             full_name: cleanName,
             avatar_url: avatarUrl,
             age: parsedAge,
-          })
-          .eq("user_id", userId);
-      } else {
-        await (supabase as any).from("associate_profiles").insert({
-          user_id: userId,
-          full_name: cleanName,
-          avatar_url: avatarUrl,
-          age: parsedAge,
-        });
-      }
+          },
+          { onConflict: "user_id" }
+        );
+      if (assocErr) throw assocErr;
 
       toast.success("Perfil de associado atualizado!");
       queryClient.invalidateQueries({ queryKey: ["my-account-profiles", userId] });

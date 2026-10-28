@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Menu, X, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyRoles, useSession } from "@/lib/auth";
@@ -25,6 +25,24 @@ export function Header() {
   const { roles } = useMyRoles(user?.id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof supabase.channel !== "function") return;
+    const channel = supabase
+      .channel("asg-realtime-db-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public" },
+        () => {
+          queryClient.invalidateQueries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   async function handleSignOut() {
     await queryClient.cancelQueries();

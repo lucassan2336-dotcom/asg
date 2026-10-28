@@ -791,3 +791,41 @@ $$;
 
 REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
 
+-- 6. Habilitar sincronização em tempo real (supabase_realtime) para todas as tabelas públicas do site
+DO $$
+DECLARE
+  v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    'site_content',
+    'site_projects',
+    'competition_results',
+    'gallery_photos',
+    'news_articles',
+    'events',
+    'sponsors',
+    'announcements',
+    'championship_podiums',
+    'ranking_scoring_config',
+    'skater_profiles',
+    'associate_profiles',
+    'profiles',
+    'membership_applications',
+    'association_memberships',
+    'user_roles',
+    'event_registrations'
+  ]
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = v_table
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', v_table);
+    END IF;
+  END LOOP;
+END $$;
+
+

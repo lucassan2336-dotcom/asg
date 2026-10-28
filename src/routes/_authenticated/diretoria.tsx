@@ -123,6 +123,36 @@ function AnnouncementsPanel() {
       setBody("");
       setPublished(false);
       queryClient.invalidateQueries({ queryKey: ["admin-announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["announcements-associados"] });
+    }
+  }
+
+  async function togglePublished(id: string, currentPublished: boolean) {
+    const nextPublished = !currentPublished;
+    const { error } = await supabase
+      .from("announcements")
+      .update({
+        published: nextPublished,
+        published_at: nextPublished ? new Date().toISOString() : null,
+      })
+      .eq("id", id);
+    if (error) {
+      toast.error("Não foi possível atualizar o aviso.");
+    } else {
+      toast.success(nextPublished ? "Aviso publicado." : "Aviso movido para rascunho.");
+      queryClient.invalidateQueries({ queryKey: ["admin-announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["announcements-associados"] });
+    }
+  }
+
+  async function removeAnnouncement(id: string) {
+    const { error } = await supabase.from("announcements").delete().eq("id", id);
+    if (error) {
+      toast.error("Não foi possível remover o aviso.");
+    } else {
+      toast.success("Aviso removido.");
+      queryClient.invalidateQueries({ queryKey: ["admin-announcements"] });
+      queryClient.invalidateQueries({ queryKey: ["announcements-associados"] });
     }
   }
 
@@ -182,13 +212,31 @@ function AnnouncementsPanel() {
           {(items ?? []).map((a) => (
             <li
               key={a.id}
-              className="flex items-center justify-between gap-3 border-b border-border pb-2"
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2"
             >
-              <span>{a.title}</span>
-              <span className="font-condensed font-bold uppercase text-muted-foreground">
-                {a.published ? "Publicado" : "Rascunho"} ·{" "}
-                {a.audience === "publico" ? "Público" : "Associados"}
-              </span>
+              <div>
+                <p className="font-semibold">{a.title}</p>
+                <p className="font-condensed text-xs font-bold uppercase text-muted-foreground">
+                  {a.published ? "Publicado" : "Rascunho"} ·{" "}
+                  {a.audience === "publico" ? "Público" : "Associados"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => togglePublished(a.id, a.published)}
+                  className="btn-ghost-stamp text-xs"
+                >
+                  {a.published ? "Rascunho" : "Publicar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeAnnouncement(a.id)}
+                  className="btn-ghost-stamp text-xs text-destructive"
+                >
+                  Excluir
+                </button>
+              </div>
             </li>
           ))}
           {(items ?? []).length === 0 && (
@@ -244,6 +292,33 @@ function EventsPanel() {
       setRegistrationOpen(false);
       setPublished(false);
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+      queryClient.invalidateQueries({ queryKey: ["site-events"] });
+    }
+  }
+
+  async function togglePublished(id: string, currentPublished: boolean) {
+    const nextPublished = !currentPublished;
+    const { error } = await supabase
+      .from("events")
+      .update({ published: nextPublished })
+      .eq("id", id);
+    if (error) {
+      toast.error("Não foi possível atualizar o evento.");
+    } else {
+      toast.success(nextPublished ? "Evento publicado." : "Evento movido para rascunho.");
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+      queryClient.invalidateQueries({ queryKey: ["site-events"] });
+    }
+  }
+
+  async function removeEvent(id: string) {
+    const { error } = await supabase.from("events").delete().eq("id", id);
+    if (error) {
+      toast.error("Não foi possível remover o evento.");
+    } else {
+      toast.success("Evento removido.");
+      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+      queryClient.invalidateQueries({ queryKey: ["site-events"] });
     }
   }
 
@@ -317,20 +392,38 @@ function EventsPanel() {
           {(items ?? []).map((ev) => (
             <li
               key={ev.id}
-              className="flex items-center justify-between gap-3 border-b border-border pb-2"
+              className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-2"
             >
-              <span>
-                {ev.title}
-                {ev.starts_at && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {new Date(ev.starts_at).toLocaleDateString("pt-BR")}
-                  </span>
-                )}
-              </span>
-              <span className="font-condensed font-bold uppercase text-muted-foreground">
-                {ev.published ? "Publicado" : "Rascunho"}
-              </span>
+              <div>
+                <p className="font-semibold">
+                  {ev.title}
+                  {ev.starts_at && (
+                    <span className="font-normal text-muted-foreground">
+                      {" "}
+                      · {new Date(ev.starts_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </p>
+                <p className="font-condensed text-xs font-bold uppercase text-muted-foreground">
+                  {ev.published ? "Publicado" : "Rascunho"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => togglePublished(ev.id, ev.published)}
+                  className="btn-ghost-stamp text-xs"
+                >
+                  {ev.published ? "Rascunho" : "Publicar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeEvent(ev.id)}
+                  className="btn-ghost-stamp text-xs text-destructive"
+                >
+                  Excluir
+                </button>
+              </div>
             </li>
           ))}
           {(items ?? []).length === 0 && (
