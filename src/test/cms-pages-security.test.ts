@@ -34,6 +34,7 @@ beforeAll(async () => {
     "0005_financial_management_expansion",
     "0006_site_pages_editable_by_diretoria",
     "0007_security_and_integrity_hardening",
+    "0011_gallery_storage_bucket",
   ]) {
     await db.exec(readFileSync(`drizzle/migrations/${file}.sql`, "utf8"));
   }
@@ -211,6 +212,51 @@ describe.sequential("Segurança e Edição de Páginas (Exclusivo da Diretoria)"
       db.query(
         `UPDATE public.site_content SET content = '{"hacked": true}'::jsonb WHERE page_slug = 'auth'`,
       ),
+    ).rejects.toThrow();
+  });
+
+  it("Diretoria pode cadastrar fotos de álbum da galeria (com URL ou upload) e público visualiza", async () => {
+    await asUser(directorId);
+    const insertRes = await db.query(`
+      INSERT INTO public.gallery_photos(title, image_url, event_name, caption, published)
+      VALUES (
+        'Sessão Noturna Praça',
+        'https://asg.com.br/fotos/sessao1.jpg',
+        'Sessão Noturna',
+        'Manobras na iluminação da pista pública',
+        true
+      )
+      RETURNING *
+    `);
+    expect(insertRes.rows.length).toBe(1);
+
+    // Também aceita uploads em base64 (data:image/...)
+    const insertDataUrl = await db.query(`
+      INSERT INTO public.gallery_photos(title, image_url, event_name, caption, published)
+      VALUES (
+        'Foto Upload Celular',
+        'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAgA0JaQAA3AA/vuUAAA=',
+        'Campeonato Local',
+        'Foto enviada do smartphone',
+        true
+      )
+      RETURNING *
+    `);
+    expect(insertDataUrl.rows.length).toBe(1);
+
+    // Público anônimo pode consultar as fotos publicadas do álbum
+    await asUser(null);
+    const { rows: publicPhotos } = await db.query(
+      `SELECT title, event_name FROM public.gallery_photos WHERE published = true`,
+    );
+    expect(publicPhotos.length).toBeGreaterThanOrEqual(2);
+
+    // Anônimo é bloqueado ao tentar enviar foto
+    await expect(
+      db.query(`
+        INSERT INTO public.gallery_photos(title, image_url)
+        VALUES ('Hacker Foto', 'https://asg.com.br/fake.jpg')
+      `),
     ).rejects.toThrow();
   });
 });

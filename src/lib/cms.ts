@@ -543,8 +543,74 @@ export function safeImageUrl(url: string | null | undefined, fallback = ""): str
   if (!url) return fallback;
   const trimmed = url.trim();
   if (!trimmed) return fallback;
+  if (trimmed.startsWith("data:image/")) return trimmed;
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
   return safeExternalUrl(trimmed) ?? fallback;
+}
+
+export async function uploadGalleryPhoto(file: File): Promise<string> {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("Formato não suportado. Envie imagens JPG, PNG ou WebP.");
+  }
+  const maxBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxBytes) {
+    throw new Error("A imagem deve ter no máximo 10MB.");
+  }
+
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").slice(0, 30);
+  const path = `album-${Date.now()}-${cleanName}.${ext}`;
+
+  try {
+    const { error: uploadError } = await supabase.storage.from("gallery").upload(path, file, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.type,
+    });
+
+    if (!uploadError) {
+      const { data } = supabase.storage.from("gallery").getPublicUrl(path);
+      if (data?.publicUrl) {
+        return data.publicUrl;
+      }
+    }
+  } catch (err) {
+    console.warn("Storage gallery upload fallback:", err);
+  }
+
+  // Fallback seguro em alta definição para exibição em tela cheia no álbum
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo da imagem."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Arquivo de imagem corrompido ou inválido."));
+      img.onload = () => {
+        const maxDim = 1600;
+        let { width, height } = img;
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height >= width && height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/webp", 0.88));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 export function safeInternalLink(link: string | null | undefined, fallback = "/"): string {
