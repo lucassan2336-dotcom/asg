@@ -11,6 +11,7 @@ import {
   Trophy,
   Camera,
   Layers,
+  UserPlus,
 } from "lucide-react";
 import { Card } from "@/components/SiteLayout";
 import {
@@ -110,6 +111,14 @@ const PAGES: PageMeta[] = [
     path: "/contato",
     description: "Canais de atendimento, e-mail, redes sociais, telefone e endereço da pista.",
     icon: FileText,
+  },
+  {
+    slug: "auth",
+    name: "Criação de Conta & Login",
+    path: "/auth",
+    description:
+      "Textos de abertura, orientações de login e descrições dos cards de Skatista e Associado.",
+    icon: UserPlus,
   },
 ];
 

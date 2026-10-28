@@ -182,4 +182,35 @@ describe.sequential("Segurança e Edição de Páginas (Exclusivo da Diretoria)"
       `),
     ).rejects.toThrow();
   });
+
+  it("Diretoria pode gerenciar e salvar o conteúdo da página de criação de conta (auth)", async () => {
+    await asUser(directorId);
+    const insertRes = await db.query(`
+      INSERT INTO public.site_content(page_slug, section_key, content)
+      VALUES (
+        'auth',
+        'main',
+        '{"hero":{"eyebrow":"Cadastre-se","title":"Crie sua conta","description":"Entre para a comunidade"},"skaterCardTitle":"Skatista ASG","associateCardTitle":"Associado ASG"}'::jsonb
+      )
+      ON CONFLICT (page_slug, section_key) DO UPDATE
+      SET content = EXCLUDED.content
+      RETURNING *
+    `);
+    expect(insertRes.rows.length).toBe(1);
+
+    // Público anônimo lê o conteúdo salvo de auth
+    await asUser(null);
+    const { rows } = await db.query<{ content: any }>(
+      `SELECT content FROM public.site_content WHERE page_slug = 'auth' AND section_key = 'main'`,
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.content.skaterCardTitle).toBe("Skatista ASG");
+
+    // Anônimo não pode alterar o conteúdo de auth
+    await expect(
+      db.query(
+        `UPDATE public.site_content SET content = '{"hacked": true}'::jsonb WHERE page_slug = 'auth'`,
+      ),
+    ).rejects.toThrow();
+  });
 });

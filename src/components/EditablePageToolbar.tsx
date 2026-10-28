@@ -467,6 +467,120 @@ export function EditPageModal({
             </div>
           )}
 
+          {/* Criação de Conta & Login Specifics */}
+          {pageSlug === "auth" && (
+            <>
+              <div className="rounded border-2 border-border p-4 bg-muted/40">
+                <h3 className="font-condensed text-base font-bold uppercase tracking-wider text-muted-foreground">
+                  Textos do Cabeçalho e Abas
+                </h3>
+                <div className="mt-3 space-y-3">
+                  <label className="block">
+                    <span className="eyebrow">Título da Aba "Criar Conta"</span>
+                    <input
+                      className="field mt-1"
+                      value={formData.signupTitle || ""}
+                      onChange={(e) => setFormData({ ...formData, signupTitle: e.target.value })}
+                      placeholder="Ex: Criar conta"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="eyebrow">Descrição da Criação de Conta</span>
+                    <textarea
+                      rows={2}
+                      className="field mt-1"
+                      value={formData.signupDescription || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, signupDescription: e.target.value })
+                      }
+                      placeholder="Orientações aos novos usuários"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="eyebrow">Título da Aba "Entrar"</span>
+                    <input
+                      className="field mt-1"
+                      value={formData.loginTitle || ""}
+                      onChange={(e) => setFormData({ ...formData, loginTitle: e.target.value })}
+                      placeholder="Ex: Entrar"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="eyebrow">Descrição da Tela de Login</span>
+                    <textarea
+                      rows={2}
+                      className="field mt-1"
+                      value={formData.loginDescription || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, loginDescription: e.target.value })
+                      }
+                      placeholder="Instruções para acessar a conta"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="rounded border-2 border-border p-4 bg-muted/40">
+                <h3 className="font-condensed text-base font-bold uppercase tracking-wider text-muted-foreground">
+                  Cards de Tipo de Conta (Skatista & Associado)
+                </h3>
+                <div className="mt-3 space-y-3">
+                  <div className="border-b border-border pb-3 space-y-2">
+                    <label className="block">
+                      <span className="eyebrow">Título do Card: Skatista Local</span>
+                      <input
+                        className="field mt-1"
+                        value={formData.skaterCardTitle || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, skaterCardTitle: e.target.value })
+                        }
+                        placeholder="Ex: Skatista Local"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="eyebrow">Descrição do Card: Skatista Local</span>
+                      <textarea
+                        rows={2}
+                        className="field mt-1"
+                        value={formData.skaterCardDescription || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, skaterCardDescription: e.target.value })
+                        }
+                        placeholder="Texto explicativo para o atleta"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block">
+                      <span className="eyebrow">Título do Card: Associado</span>
+                      <input
+                        className="field mt-1"
+                        value={formData.associateCardTitle || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, associateCardTitle: e.target.value })
+                        }
+                        placeholder="Ex: Associado A.S.G."
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="eyebrow">Descrição do Card: Associado</span>
+                      <textarea
+                        rows={2}
+                        className="field mt-1"
+                        value={formData.associateCardDescription || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, associateCardDescription: e.target.value })
+                        }
+                        placeholder="Texto explicativo para o associado"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-end gap-3 pt-3">
             <button type="button" onClick={onClose} className="btn-ghost-stamp">
               Cancelar

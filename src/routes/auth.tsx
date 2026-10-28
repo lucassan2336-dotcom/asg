@@ -4,7 +4,9 @@ import { Flame, Shield, UserCheck, Trophy, CheckCircle2, Sparkles, Clock } from 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
+import { EditablePageToolbar } from "@/components/EditablePageToolbar";
 import { safeRedirect, useSession } from "@/lib/auth";
+import { usePageContent, type AuthPageContent } from "@/lib/cms";
 import { seo } from "@/lib/seo";
 import type { AccountKind, SkateModality, SkateStance } from "@/lib/ranking";
 
@@ -26,6 +28,7 @@ function AuthPage() {
   const { redirect: redirectTarget } = Route.useSearch();
   const navigate = useNavigate();
   const { user, loading } = useSession();
+  const { content } = usePageContent<AuthPageContent>("auth");
 
   const [mode, setMode] = useState<"entrar" | "criar" | "recuperar">("entrar");
   const [accountType, setAccountType] = useState<AccountKind>("skatista");
@@ -179,14 +182,25 @@ function AuthPage() {
 
   return (
     <>
+      <EditablePageToolbar pageSlug="auth" pageName="Criação de Conta / Login" />
+
       <PageHero
-        eyebrow="Conta A.S.G."
-        title={mode === "entrar" ? "Entrar" : mode === "criar" ? "Criar conta" : "Recuperar senha"}
+        eyebrow={content?.hero?.eyebrow || "Conta A.S.G."}
+        title={
+          mode === "entrar"
+            ? content?.loginTitle || "Entrar"
+            : mode === "criar"
+              ? content?.signupTitle || "Criar conta"
+              : "Recuperar senha"
+        }
       >
         {mode === "entrar"
-          ? "Acesse seu perfil de Skatista Local ou sua Área do Associado."
+          ? content?.loginDescription ||
+            "Acesse seu perfil de Skatista Local ou sua Área do Associado."
           : mode === "criar"
-            ? "Escolha seu tipo de conta: Skatista Local (para competir no Ranking Street ou Vert) ou Associado da A.S.G."
+            ? content?.signupDescription ||
+              content?.hero?.description ||
+              "Escolha seu tipo de conta: Skatista Local (para competir no Ranking Street ou Vert) ou Associado da A.S.G."
             : "Informe seu e-mail para receber o link de redefinição de senha."}
       </PageHero>
       <Section className="flex justify-center">
@@ -286,10 +300,12 @@ function AuthPage() {
                               <CheckCircle2 className="h-5 w-5 text-rust" />
                             )}
                           </div>
-                          <h3 className="mt-2 font-display text-xl uppercase">Skatista Local</h3>
+                          <h3 className="mt-2 font-display text-xl uppercase">
+                            {content?.skaterCardTitle || "Skatista Local"}
+                          </h3>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Cria seu perfil esportivo público e vincula você às competições oficiais
-                            da A.S.G.
+                            {content?.skaterCardDescription ||
+                              "Cria seu perfil esportivo público e vincula você às competições oficiais da A.S.G."}
                           </p>
                         </button>
 
@@ -311,10 +327,12 @@ function AuthPage() {
                               <CheckCircle2 className="h-5 w-5 text-olive" />
                             )}
                           </div>
-                          <h3 className="mt-2 font-display text-xl uppercase">Associado A.S.G.</h3>
+                          <h3 className="mt-2 font-display text-xl uppercase">
+                            {content?.associateCardTitle || "Associado A.S.G."}
+                          </h3>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Perfil associativo exclusivo para membros e apoiadores da A.S.G. Não
-                            inclui no ranking competitivo.
+                            {content?.associateCardDescription ||
+                              "Perfil associativo exclusivo para membros e apoiadores da A.S.G. Não inclui no ranking competitivo."}
                           </p>
                         </button>
                       </div>

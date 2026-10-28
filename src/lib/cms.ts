@@ -67,6 +67,18 @@ export interface ContatoContent {
   pix?: ContatoPixConfig;
 }
 
+export interface AuthPageContent {
+  hero: PageHeroContent;
+  signupTitle?: string;
+  signupDescription?: string;
+  loginTitle?: string;
+  loginDescription?: string;
+  skaterCardTitle?: string;
+  skaterCardDescription?: string;
+  associateCardTitle?: string;
+  associateCardDescription?: string;
+}
+
 export interface GenericPageContent {
   hero: PageHeroContent;
 }
@@ -278,6 +290,26 @@ export const DEFAULT_PAGE_CONTENTS: Record<string, any> = {
       message:
         "Sua doação ajuda a manter a pista municipal de skate, realizar oficinas gratuitas para iniciantes e apoiar nossos atletas.",
     },
+  },
+
+  auth: {
+    hero: {
+      eyebrow: "Conta A.S.G.",
+      title: "Criar Conta & Autenticação",
+      description:
+        "Escolha seu tipo de conta: Skatista Local (para competir no Ranking Street ou Vert) ou Associado da A.S.G.",
+    },
+    signupTitle: "Criar Conta",
+    signupDescription:
+      "Escolha seu tipo de conta: Skatista Local (para competir no Ranking Street ou Vert) ou Associado da A.S.G.",
+    loginTitle: "Entrar",
+    loginDescription: "Acesse seu perfil de Skatista Local ou sua Área do Associado.",
+    skaterCardTitle: "Skatista Local",
+    skaterCardDescription:
+      "Cria seu perfil esportivo público e vincula você às competições oficiais da A.S.G.",
+    associateCardTitle: "Associado A.S.G.",
+    associateCardDescription:
+      "Perfil associativo exclusivo para membros e apoiadores da A.S.G. Não inclui no ranking competitivo.",
   },
 };
 
