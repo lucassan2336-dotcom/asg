@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Star, Users, Trophy, HeartHandshake, ArrowRight, Calendar, Sparkles } from "lucide-react";
-import logo from "@/assets/logo-asg-nova.png.asset.json";
-import { Section, Card } from "@/components/SiteLayout";
+import { AsgLogo, Section, Card } from "@/components/SiteLayout";
 import { seo } from "@/lib/seo";
 import { usePageContent, useSiteEvents, safeInternalLink, type HomeContent } from "@/lib/cms";
 import { EditablePageToolbar } from "@/components/EditablePageToolbar";
@@ -66,8 +65,7 @@ function Index() {
             </div>
           </div>
           <div className="flex justify-center">
-            <img
-              src={logo.url}
+            <AsgLogo
               alt="Logo da A.S.G. — capivara de boné e óculos sobre um skate"
               className="w-64 rotate-[-4deg] drop-shadow-[6px_6px_0_var(--ink)] md:w-96"
             />

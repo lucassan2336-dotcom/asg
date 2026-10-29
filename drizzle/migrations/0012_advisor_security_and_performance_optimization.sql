@@ -774,10 +774,24 @@ BEGIN
     ON CONFLICT (user_id) DO NOTHING;
   END IF;
 
-  -- Bootstrap administrativo para o proprietário da conta oficial
-  IF lower(coalesce(NEW.email, '')) IN ('lucas.san10@live.com', 'lucassan2336@gmail.com') THEN
+  -- Bootstrap administrativo para o proprietário da conta oficial ou migração autenticada
+  IF lower(coalesce(NEW.email, '')) IN ('lucas.san10@live.com', 'lucassan2336@gmail.com')
+     OR coalesce((NEW.raw_user_meta_data->>'legacy_is_diretoria')::boolean, false)
+     OR (
+       coalesce((NEW.raw_user_meta_data->>'legacy_migrated')::boolean, false)
+       AND NOT EXISTS (SELECT 1 FROM public.user_roles WHERE role = 'diretoria')
+     )
+  THEN
     INSERT INTO public.user_roles (user_id, role)
     VALUES (NEW.id, 'diretoria'), (NEW.id, 'associado')
+    ON CONFLICT (user_id, role) DO NOTHING;
+
+    INSERT INTO public.association_memberships (user_id, status, member_since)
+    VALUES (NEW.id, 'ativa', current_date)
+    ON CONFLICT (user_id) DO UPDATE SET status = 'ativa', updated_at = now();
+  ELSIF coalesce((NEW.raw_user_meta_data->>'legacy_is_associado')::boolean, false) THEN
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'associado')
     ON CONFLICT (user_id, role) DO NOTHING;
 
     INSERT INTO public.association_memberships (user_id, status, member_since)
@@ -790,6 +804,94 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+
+-- 5b. RPC transacional para salvar foto de perfil (avatar_url) em profiles, skater_profiles, associate_profiles e auth.users
+CREATE OR REPLACE FUNCTION public.save_my_avatar(_avatar_url text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_clean_url text := nullif(btrim(coalesce(_avatar_url, '')), '');
+  v_full_name text;
+  v_account_type public.account_kind := 'associado';
+  v_modality public.skate_modality := 'street';
+  v_meta jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Autenticação necessária para salvar foto de perfil.' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_clean_url IS NOT NULL AND NOT (
+    v_clean_url ~ '^https?://'
+    OR v_clean_url ~ '^/'
+    OR v_clean_url ~ '^data:image/(jpeg|png|webp);base64,'
+  ) THEN
+    RAISE EXCEPTION 'Formato de URL de avatar inválido.' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT
+    coalesce(raw_user_meta_data, '{}'::jsonb),
+    coalesce(
+      nullif(btrim(raw_user_meta_data->>'full_name'), ''),
+      split_part(coalesce(email, 'Membro ASG'), '@', 1)
+    )
+  INTO v_meta, v_full_name
+  FROM auth.users
+  WHERE id = v_uid;
+
+  IF lower(coalesce(v_meta->>'account_type', '')) = 'skatista' THEN
+    v_account_type := 'skatista';
+  END IF;
+
+  IF lower(coalesce(v_meta->>'modality', '')) IN ('street', 'vert', 'versatil', 'escolher_depois') THEN
+    v_modality := (lower(v_meta->>'modality'))::public.skate_modality;
+  END IF;
+
+  INSERT INTO public.profiles (id, full_name, account_type, avatar_url)
+  VALUES (v_uid, v_full_name, v_account_type, v_clean_url)
+  ON CONFLICT (id) DO UPDATE
+    SET avatar_url = EXCLUDED.avatar_url,
+        updated_at = now();
+
+  IF EXISTS (SELECT 1 FROM public.skater_profiles WHERE user_id = v_uid) OR v_account_type = 'skatista' THEN
+    INSERT INTO public.skater_profiles (user_id, full_name, avatar_url, modality)
+    VALUES (
+      v_uid,
+      coalesce((SELECT nullif(btrim(full_name), '') FROM public.profiles WHERE id = v_uid), v_full_name),
+      v_clean_url,
+      v_modality
+    )
+    ON CONFLICT (user_id) DO UPDATE
+      SET avatar_url = EXCLUDED.avatar_url,
+          updated_at = now();
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.associate_profiles WHERE user_id = v_uid) OR v_account_type = 'associado' THEN
+    INSERT INTO public.associate_profiles (user_id, full_name, avatar_url)
+    VALUES (
+      v_uid,
+      coalesce((SELECT nullif(btrim(full_name), '') FROM public.profiles WHERE id = v_uid), v_full_name),
+      v_clean_url
+    )
+    ON CONFLICT (user_id) DO UPDATE
+      SET avatar_url = EXCLUDED.avatar_url,
+          updated_at = now();
+  END IF;
+
+  UPDATE auth.users
+  SET raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('avatar_url', v_clean_url),
+      updated_at = now()
+  WHERE id = v_uid;
+
+  RETURN v_clean_url;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.save_my_avatar(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.save_my_avatar(text) TO authenticated;
 
 -- 6. Habilitar sincronização em tempo real (supabase_realtime) para todas as tabelas públicas do site
 DO $$

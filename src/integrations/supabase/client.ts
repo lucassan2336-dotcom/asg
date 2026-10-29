@@ -57,6 +57,8 @@ function createSupabaseFetch(supabaseUrl: string, supabaseKey: string): typeof f
 const ACTIVE_SUPABASE_URL = "https://hriafazfexhtyjhgbmie.supabase.co";
 const ACTIVE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_thtb68jIDTz5FG9PRLAC3g_PUNSG6c9";
 const LEGACY_LOVABLE_PROJECT_ID = "dmfocitpmxyzwrhcmglj";
+const LEGACY_SUPABASE_URL = "https://dmfocitpmxyzwrhcmglj.supabase.co";
+const LEGACY_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_yv9CxMUUXbvCqCWkGX62oQ_-U1r0mY4";
 
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
@@ -103,3 +105,113 @@ export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>,
     return Reflect.get(_supabase, prop, receiver);
   },
 });
+
+/**
+ * Autentica o usuário no banco principal do Supabase e, caso a conta tenha sido
+ * criada originalmente no banco do Lovable antes da integração com o novo projeto,
+ * valida as credenciais na instância anterior e migra o cadastro de forma transparente
+ * preservando nome, perfil, modalidade e permissões (associado/diretoria).
+ */
+export async function signInWithLegacyFallback(email: string, password: string) {
+  const cleanEmail = email.trim();
+  const primaryResult = await supabase.auth.signInWithPassword({
+    email: cleanEmail,
+    password,
+  });
+
+  if (!primaryResult.error && primaryResult.data.session) {
+    return primaryResult;
+  }
+
+  const errMsg = primaryResult.error?.message?.toLowerCase() ?? "";
+  if (!errMsg.includes("invalid login credentials")) {
+    return primaryResult;
+  }
+
+  try {
+    const legacyClient = createClient<Database>(
+      LEGACY_SUPABASE_URL,
+      LEGACY_SUPABASE_PUBLISHABLE_KEY,
+      {
+        global: {
+          fetch: createSupabaseFetch(LEGACY_SUPABASE_URL, LEGACY_SUPABASE_PUBLISHABLE_KEY),
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
+    );
+
+    const { data: legacyAuth, error: legacyErr } = await legacyClient.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    });
+
+    if (legacyErr || !legacyAuth.user) {
+      return primaryResult;
+    }
+
+    const legacyUser = legacyAuth.user;
+    const legacyMeta = (legacyUser.user_metadata ?? {}) as Record<string, unknown>;
+
+    const [{ data: legacyProfile }, { data: legacyRoles }] = await Promise.all([
+      legacyClient.from("profiles").select("*").eq("id", legacyUser.id).maybeSingle(),
+      legacyClient.from("user_roles").select("role").eq("user_id", legacyUser.id),
+    ]);
+
+    const rolesList = (legacyRoles ?? []).map((r) => String(r.role));
+    const isDiretoria = rolesList.includes("diretoria");
+    const isAssociado = rolesList.includes("associado") || isDiretoria;
+
+    const fullName = String(
+      (legacyProfile as Record<string, unknown> | null)?.["full_name"] ||
+        legacyMeta["full_name"] ||
+        cleanEmail.split("@")[0] ||
+        "Membro A.S.G.",
+    )
+      .trim()
+      .slice(0, 100);
+
+    const phone =
+      typeof (legacyProfile as Record<string, unknown> | null)?.["phone"] === "string"
+        ? String((legacyProfile as Record<string, unknown>)["phone"])
+        : null;
+
+    await legacyClient.auth.signOut();
+
+    const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password,
+      options: {
+        data: {
+          ...legacyMeta,
+          full_name: fullName,
+          phone,
+          account_type: legacyMeta["account_type"] === "skatista" ? "skatista" : "associado",
+          legacy_migrated: true,
+          legacy_is_diretoria: isDiretoria,
+          legacy_is_associado: isAssociado,
+        },
+      },
+    });
+
+    if (!signUpErr && signUpData.session && signUpData.user) {
+      return {
+        data: {
+          user: signUpData.user,
+          session: signUpData.session,
+        },
+        error: null,
+      };
+    }
+
+    return await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    });
+  } catch {
+    return primaryResult;
+  }
+}
