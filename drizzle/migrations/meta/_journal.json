@@ -71,6 +71,13 @@
       "when": 1793118000000,
       "tag": "0009_skaters_associates_ranking_system",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793197669254,
+      "tag": "0010_apply_member_and_role_management",
+      "breakpoints": true
     }
   ]
 }

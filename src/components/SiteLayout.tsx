@@ -231,10 +231,12 @@ export function Footer() {
 export function PageHero({
   eyebrow,
   title,
+  actions,
   children,
 }: {
   eyebrow: string;
   title: string;
+  actions?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -247,6 +249,7 @@ export function PageHero({
           {title}
         </h1>
         {children && <div className="mt-4 max-w-2xl text-lg text-cream/90">{children}</div>}
+        {actions && <div className="mt-6 flex flex-wrap items-center gap-3">{actions}</div>}
       </div>
     </section>
   );
