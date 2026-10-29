@@ -1,10 +1,21 @@
 import { useState, useRef } from "react";
-import { X, Trash2, Upload, ImagePlus, Loader2, Camera, Star, Plus } from "lucide-react";
+import {
+  X,
+  Trash2,
+  Upload,
+  ImagePlus,
+  Loader2,
+  Camera,
+  Star,
+  Plus,
+  FolderPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   type ProjectItem,
   type CompetitionResultItem,
   type GalleryPhotoItem,
+  type GalleryAlbumItem,
   type NewsArticleItem,
   type EventItem,
   type SponsorItem,
@@ -15,6 +26,8 @@ import {
   useSaveGalleryPhoto,
   useSaveMultipleGalleryPhotos,
   useDeleteGalleryPhoto,
+  useSaveGalleryAlbum,
+  useDeleteGalleryAlbum,
   useSaveNewsArticle,
   useDeleteNewsArticle,
   useSaveSiteEvent,
@@ -1183,6 +1196,383 @@ export function GalleryModal({
                   : batchPhotos.length > 1
                     ? `Salvar ${batchPhotos.length} Fotos no Álbum`
                     : "Salvar no Álbum"}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// Modal de Criação / Edição de Álbum da Galeria
+// ==========================================
+
+export function AlbumFormModal({
+  album,
+  onClose,
+  onAlbumSaved,
+}: {
+  album?: GalleryAlbumItem | null;
+  onClose: () => void;
+  onAlbumSaved?: (albumName: string) => void;
+}) {
+  const saveAlbumMutation = useSaveGalleryAlbum();
+  const deleteAlbumMutation = useDeleteGalleryAlbum();
+
+  const [name, setName] = useState(album?.name || "");
+  const [description, setDescription] = useState(album?.description || "");
+  const [coverUrl, setCoverUrl] = useState(album?.cover_url || "");
+  const [extraPhotos, setExtraPhotos] = useState<PendingAlbumPhoto[]>([]);
+
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const extraPhotosInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingExtra, setUploadingExtra] = useState(false);
+  const [progressText, setProgressText] = useState("");
+
+  const formatFileNameAsTitle = (fileName: string) => {
+    const clean = fileName
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+    if (!clean) return "Foto do Álbum";
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+  };
+
+  const handleCoverSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingCover(true);
+      const url = await uploadGalleryPhoto(file);
+      setCoverUrl(url);
+      toast.success("Foto de capa do álbum carregada!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível carregar a capa.");
+    } finally {
+      setUploadingCover(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  const handleExtraPhotosSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    try {
+      setUploadingExtra(true);
+      const added: PendingAlbumPhoto[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]!;
+        setProgressText(`Carregando foto ${i + 1} de ${files.length}…`);
+        const url = await uploadGalleryPhoto(f);
+        added.push({
+          tempId: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          imageUrl: url,
+          title: formatFileNameAsTitle(f.name),
+          isCover: false,
+        });
+      }
+      setExtraPhotos((prev) => {
+        const next = [...prev, ...added];
+        if (!coverUrl && next.length > 0) {
+          setCoverUrl(next[0]!.imageUrl);
+        }
+        return next;
+      });
+      toast.success(
+        files.length === 1
+          ? "Foto adicionada ao álbum!"
+          : `${files.length} fotos adicionadas ao álbum!`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao carregar fotos.");
+    } finally {
+      setUploadingExtra(false);
+      setProgressText("");
+      if (extraPhotosInputRef.current) extraPhotosInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveExtraPhoto = (tempId: string) => {
+    setExtraPhotos((prev) => prev.filter((p) => p.tempId !== tempId));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = name.trim();
+    if (cleanName.length < 2) {
+      toast.error("Informe o nome do álbum (mínimo de 2 caracteres).");
+      return;
+    }
+
+    const initialPhotos: Array<{
+      title: string;
+      image_url: string;
+      caption?: string | null;
+      is_cover?: boolean;
+    }> = [];
+
+    if (coverUrl && !album) {
+      initialPhotos.push({
+        title: `${cleanName} - Capa`,
+        image_url: coverUrl,
+        caption: description.trim() || null,
+        is_cover: true,
+      });
+    }
+
+    for (const ep of extraPhotos) {
+      if (ep.imageUrl === coverUrl && !album) continue;
+      initialPhotos.push({
+        title: ep.title.trim() || cleanName,
+        image_url: ep.imageUrl,
+        caption: description.trim() || null,
+        is_cover: ep.imageUrl === coverUrl,
+      });
+    }
+
+    try {
+      await saveAlbumMutation.mutateAsync({
+        oldName: album?.name ?? null,
+        name: cleanName,
+        description: description.trim() || null,
+        coverUrl: coverUrl || null,
+        initialPhotos,
+      });
+      toast.success(album ? "Álbum atualizado com sucesso!" : `Álbum "${cleanName}" criado!`);
+      onAlbumSaved?.(cleanName);
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível salvar o álbum.");
+    }
+  };
+
+  const handleDeleteAlbum = async () => {
+    if (!album?.name) return;
+    if (
+      confirm(
+        `Deseja excluir o álbum "${album.name}" e todas as fotos vinculadas a ele? Esta ação não pode ser desfeita.`,
+      )
+    ) {
+      try {
+        await deleteAlbumMutation.mutateAsync(album.name);
+        toast.success(`Álbum "${album.name}" excluído.`);
+        onClose();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Não foi possível excluir o álbum.");
+      }
+    }
+  };
+
+  const isBusy =
+    saveAlbumMutation.isPending ||
+    deleteAlbumMutation.isPending ||
+    uploadingCover ||
+    uploadingExtra;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-lg border-2 border-ink bg-card p-6 shadow-stamp">
+        <div className="flex items-center justify-between border-b-2 border-ink pb-3">
+          <div className="flex items-center gap-2">
+            <FolderPlus className="h-5 w-5 text-rust" />
+            <h2 className="font-display text-2xl">
+              {album ? `Editar Álbum • ${album.name}` : "Criar Novo Álbum de Fotos"}
+            </h2>
+          </div>
+          <button onClick={onClose} className="rounded p-1 hover:bg-muted" aria-label="Fechar">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <label className="block">
+            <span className="eyebrow">Nome do Álbum *</span>
+            <input
+              required
+              maxLength={120}
+              className="field mt-1"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Campeonato Street 2026, Sessão de Domingo, Oficina Social..."
+            />
+          </label>
+
+          <label className="block">
+            <span className="eyebrow">Descrição do Álbum (Opcional)</span>
+            <textarea
+              rows={2}
+              maxLength={400}
+              className="field mt-1"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Breve descrição sobre o evento, data ou sessão deste álbum..."
+            />
+          </label>
+
+          {/* Capa do Álbum */}
+          <div>
+            <span className="eyebrow block mb-1.5">Foto de Capa do Álbum</span>
+            <input
+              type="file"
+              ref={coverInputRef}
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleCoverSelect}
+            />
+
+            {coverUrl ? (
+              <div className="relative overflow-hidden rounded-md border-2 border-amber bg-muted">
+                <img
+                  src={safeImageUrl(coverUrl)}
+                  alt="Capa do álbum"
+                  className="h-48 w-full object-cover"
+                />
+                <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-sm border border-ink bg-amber px-2.5 py-0.5 font-condensed text-xs font-bold uppercase text-ink shadow-xs">
+                  <Star className="h-3.5 w-3.5 fill-current" /> Capa Oficial do Álbum
+                </span>
+                <div className="absolute bottom-2 right-2 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={uploadingCover}
+                    onClick={() => coverInputRef.current?.click()}
+                    className="btn-stamp bg-cream text-ink text-xs px-2.5 py-1 inline-flex items-center gap-1"
+                  >
+                    <Upload className="h-3.5 w-3.5" /> Trocar Capa
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => !uploadingCover && coverInputRef.current?.click()}
+                className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-ink/50 bg-secondary/60 p-5 text-center cursor-pointer transition-all hover:border-ink hover:bg-secondary"
+              >
+                {uploadingCover ? (
+                  <>
+                    <Loader2 className="h-8 w-8 animate-spin text-rust mb-1.5" />
+                    <span className="font-condensed font-bold uppercase text-xs">
+                      Carregando foto de capa…
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-8 w-8 text-rust mb-1.5" />
+                    <span className="font-condensed font-bold uppercase text-sm">
+                      Clique para selecionar a Foto de Capa do Álbum
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      Esta será a foto principal exibida no card de acesso ao álbum
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Seleção opcional de fotos adicionais para o álbum já na criação */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="eyebrow">
+                Fotos do Álbum ({extraPhotos.length} selecionada
+                {extraPhotos.length === 1 ? "" : "s"})
+              </span>
+              <button
+                type="button"
+                disabled={uploadingExtra}
+                onClick={() => extraPhotosInputRef.current?.click()}
+                className="btn-stamp bg-amber text-ink text-xs inline-flex items-center gap-1 px-2.5 py-1"
+              >
+                <Plus className="h-3.5 w-3.5" /> Selecionar Mais Fotos para o Álbum
+              </button>
+            </div>
+
+            <input
+              type="file"
+              ref={extraPhotosInputRef}
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleExtraPhotosSelect}
+            />
+
+            {uploadingExtra && (
+              <div className="flex items-center gap-2 rounded-md border border-ink/20 bg-secondary p-3 text-xs font-condensed uppercase text-rust mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{progressText || "Carregando fotos…"}</span>
+              </div>
+            )}
+
+            {extraPhotos.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto p-1">
+                {extraPhotos.map((ep) => {
+                  const isCurrentCover = coverUrl === ep.imageUrl;
+                  return (
+                    <div
+                      key={ep.tempId}
+                      className={`relative rounded border-2 p-1.5 bg-secondary/40 ${
+                        isCurrentCover ? "border-amber" : "border-ink/40"
+                      }`}
+                    >
+                      <div className="relative h-24 w-full overflow-hidden rounded bg-muted">
+                        <img
+                          src={safeImageUrl(ep.imageUrl)}
+                          alt={ep.title}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCoverUrl(ep.imageUrl)}
+                          className={`absolute top-1 left-1 rounded px-1.5 py-0.5 font-condensed text-[10px] font-bold uppercase ${
+                            isCurrentCover
+                              ? "bg-amber text-ink"
+                              : "bg-black/70 text-cream hover:bg-amber hover:text-ink"
+                          }`}
+                        >
+                          {isCurrentCover ? "★ Capa" : "Usar como Capa"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExtraPhoto(ep.tempId)}
+                          className="absolute top-1 right-1 rounded bg-black/70 p-1 text-cream hover:bg-destructive"
+                          title="Remover foto"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Você pode selecionar várias fotos agora ou criar o álbum primeiro e adicionar mais
+                fotos dentro dele quando quiser.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            {album?.name ? (
+              <button
+                type="button"
+                onClick={handleDeleteAlbum}
+                disabled={isBusy}
+                className="flex items-center gap-1 text-sm text-destructive hover:underline"
+              >
+                <Trash2 className="h-4 w-4" /> Excluir Álbum
+              </button>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex gap-2">
+              <button type="button" onClick={onClose} className="btn-ghost-stamp">
+                Cancelar
+              </button>
+              <button type="submit" disabled={isBusy} className="btn-stamp disabled:opacity-60">
+                {isBusy ? "Salvando…" : album ? "Salvar Alterações" : "Criar Álbum"}
               </button>
             </div>
           </div>

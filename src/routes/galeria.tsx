@@ -9,9 +9,10 @@ import {
   Maximize2,
   Images,
   Plus,
-  Filter,
   Star,
   FolderOpen,
+  FolderPlus,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
@@ -19,16 +20,18 @@ import { seo } from "@/lib/seo";
 import {
   usePageContent,
   useGalleryPhotos,
+  useGalleryAlbums,
   useSetAlbumCover,
   getAlbumCoverPhoto,
   isAlbumCoverPhoto,
   safeImageUrl,
   type GenericPageContent,
   type GalleryPhotoItem,
+  type GalleryAlbumItem,
 } from "@/lib/cms";
 import { useSession, useMyRoles } from "@/lib/auth";
 import { EditablePageToolbar } from "@/components/EditablePageToolbar";
-import { GalleryModal } from "@/components/CmsModals";
+import { GalleryModal, AlbumFormModal } from "@/components/CmsModals";
 
 export const Route = createFileRoute("/galeria")({
   head: () =>
@@ -232,6 +235,12 @@ function AlbumViewerModal({
   );
 }
 
+const DEFAULT_ALBUM_FALLBACK = "Registros Gerais A.S.G.";
+
+function getPhotoAlbumName(photo: GalleryPhotoItem): string {
+  return photo.event_name?.trim() || DEFAULT_ALBUM_FALLBACK;
+}
+
 function GaleriaPage() {
   const { user } = useSession();
   const { roles } = useMyRoles(user?.id);
@@ -239,71 +248,106 @@ function GaleriaPage() {
 
   const { content } = usePageContent<GenericPageContent>("galeria");
   const { data: photos, isLoading } = useGalleryPhotos();
+  const { data: savedAlbums = [] } = useGalleryAlbums();
   const setAlbumCoverMutation = useSetAlbumCover();
 
-  const [modalOpen, setModalOpen] = useState(false);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhotoItem | null>(null);
   const [modalDefaultAlbum, setModalDefaultAlbum] = useState<string | null>(null);
+
+  const [albumModalOpen, setAlbumModalOpen] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState<GalleryAlbumItem | null>(null);
+
   const [activeAlbumIndex, setActiveAlbumIndex] = useState<number | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
 
   const hero = content?.hero;
   const rawList = isDiretoria ? photos || [] : (photos || []).filter((p) => p.published);
 
-  // Extrair álbuns / eventos únicos para filtragem
-  const eventsList = Array.from(
-    new Set(rawList.map((p) => p.event_name?.trim()).filter(Boolean)),
-  ) as string[];
+  // Unificar álbuns criados explicitamente + álbuns existentes nas fotos
+  const albumNamesSet = new Set<string>();
+  for (const alb of savedAlbums) {
+    if (alb.name?.trim()) albumNamesSet.add(alb.name.trim());
+  }
+  for (const p of rawList) {
+    albumNamesSet.add(getPhotoAlbumName(p));
+  }
+  const eventsList = Array.from(albumNamesSet);
 
-  // Agrupar fotos por álbum para identificar capas e contagens
+  // Resumo completo de cada álbum (capa, descrição, fotos e contagem)
   const albumsSummary = eventsList.map((albumName) => {
-    const albumPhotos = rawList.filter((p) => p.event_name?.trim() === albumName);
-    const coverPhoto = getAlbumCoverPhoto(albumPhotos);
+    const albumMeta = savedAlbums.find(
+      (a) => a.name.trim().toLowerCase() === albumName.toLowerCase(),
+    );
+    const albumPhotos = rawList.filter((p) => getPhotoAlbumName(p) === albumName);
+    const coverFromPhotos = getAlbumCoverPhoto(albumPhotos);
+    const coverImageUrl = coverFromPhotos?.image_url || albumMeta?.cover_url || null;
+
     return {
       albumName,
+      albumMeta: albumMeta || {
+        id: `alb-${albumName}`,
+        name: albumName,
+        description: null,
+        cover_url: coverImageUrl,
+      },
+      description: albumMeta?.description || null,
       photos: albumPhotos,
-      coverPhoto,
+      coverPhoto: coverFromPhotos,
+      coverImageUrl,
       count: albumPhotos.length,
     };
   });
 
-  // Lista filtrada por evento/álbum
+  const activeAlbumSummary = selectedEvent
+    ? albumsSummary.find((a) => a.albumName === selectedEvent) || null
+    : null;
+
+  // Fotos do álbum atualmente aberto
   const filteredList = selectedEvent
-    ? rawList.filter((p) => p.event_name?.trim() === selectedEvent)
-    : rawList;
+    ? rawList.filter((p) => getPhotoAlbumName(p) === selectedEvent)
+    : [];
 
   const isPhotoAlbumCover = (photo: GalleryPhotoItem): boolean => {
-    const albumKey = photo.event_name?.trim() || null;
-    const sameAlbumPhotos = rawList.filter((p) => (p.event_name?.trim() || null) === albumKey);
+    const albumKey = getPhotoAlbumName(photo);
+    const sameAlbumPhotos = rawList.filter((p) => getPhotoAlbumName(p) === albumKey);
     return isAlbumCoverPhoto(photo, sameAlbumPhotos);
   };
 
   const handleSetCover = async (photo: GalleryPhotoItem) => {
     try {
+      const albumKey = getPhotoAlbumName(photo);
       await setAlbumCoverMutation.mutateAsync({
         photoId: photo.id,
         eventName: photo.event_name?.trim() || null,
+        imageUrl: photo.image_url,
       });
-      toast.success(
-        photo.event_name
-          ? `Foto definida como capa do álbum "${photo.event_name}"!`
-          : "Foto definida como capa principal!",
-      );
+      toast.success(`Foto definida como capa do álbum "${albumKey}"!`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível definir a capa.");
     }
   };
 
-  const handleNewPhoto = (albumName?: string | null) => {
+  const handleOpenCreateAlbum = () => {
+    setEditingAlbum(null);
+    setAlbumModalOpen(true);
+  };
+
+  const handleOpenEditAlbum = (albumMeta: GalleryAlbumItem) => {
+    setEditingAlbum(albumMeta);
+    setAlbumModalOpen(true);
+  };
+
+  const handleAddPhotosToAlbum = (albumName: string) => {
     setSelectedPhoto(null);
-    setModalDefaultAlbum(albumName ?? selectedEvent ?? null);
-    setModalOpen(true);
+    setModalDefaultAlbum(albumName === DEFAULT_ALBUM_FALLBACK ? "" : albumName);
+    setPhotoModalOpen(true);
   };
 
   const handleEditPhoto = (item: GalleryPhotoItem) => {
     setSelectedPhoto(item);
     setModalDefaultAlbum(item.event_name ?? null);
-    setModalOpen(true);
+    setPhotoModalOpen(true);
   };
 
   const handleStartAlbumViewer = (index = 0) => {
@@ -316,278 +360,358 @@ function GaleriaPage() {
     <>
       <EditablePageToolbar
         pageSlug="galeria"
-        pageName="Galeria & Álbum de Fotos"
-        addItemLabel="Adicionar Fotos ao Álbum"
-        onAddItem={() => handleNewPhoto(selectedEvent)}
+        pageName="Galeria & Álbuns de Fotos"
+        addItemLabel={selectedEvent ? `Adicionar Fotos em "${selectedEvent}"` : "Criar Novo Álbum"}
+        onAddItem={() =>
+          selectedEvent ? handleAddPhotosToAlbum(selectedEvent) : handleOpenCreateAlbum()
+        }
       />
 
       <PageHero
         eyebrow={hero?.eyebrow || "Registros Visuais"}
-        title={hero?.title || "Álbum de Fotos"}
+        title={selectedEvent ? selectedEvent : hero?.title || "Álbuns de Fotos"}
       >
-        {hero?.description ||
-          "Álbum fotográfico das sessões, campeonatos, oficinas e projetos da Associação dos Skatistas de Guararema."}
+        {selectedEvent
+          ? activeAlbumSummary?.description ||
+            `Confira todas as fotos registradas no álbum "${selectedEvent}".`
+          : hero?.description ||
+            "Escolha um álbum abaixo para visualizar todas as fotos das sessões, campeonatos, oficinas e projetos da A.S.G."}
       </PageHero>
 
       <Section className="space-y-8">
-        {/* Álbuns com Capa Oficial e Botão de Adicionar Mais Fotos */}
-        {albumsSummary.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-2xl uppercase flex items-center gap-2">
-                <FolderOpen className="h-5 w-5 text-rust" /> Álbuns da Galeria
-              </h2>
-              {selectedEvent && (
+        {selectedEvent === null ? (
+          /* =========================================================
+           * TELA 1: APENAS OS ÁLBUNS (ACESSO AOS ÁLBUNS COM CAPA)
+           * ========================================================= */
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border-2 border-ink bg-secondary p-4 shadow-stamp">
+              <div className="flex items-center gap-2.5">
+                <FolderOpen className="h-5 w-5 text-rust shrink-0" />
+                <div>
+                  <h2 className="font-display text-xl uppercase leading-none">
+                    Selecione um Álbum ({albumsSummary.length})
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Clique em qualquer álbum abaixo para abrir e ver todas as fotos dele.
+                  </p>
+                </div>
+              </div>
+
+              {isDiretoria && (
                 <button
                   type="button"
-                  onClick={() => setSelectedEvent(null)}
-                  className="btn-ghost-stamp text-xs px-3 py-1"
+                  onClick={handleOpenCreateAlbum}
+                  className="btn-stamp bg-rust text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
                 >
-                  Ver Todos os Álbuns ({rawList.length} fotos)
+                  <FolderPlus className="h-4 w-4" /> Criar Novo Álbum
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {albumsSummary.map(({ albumName, coverPhoto, count }) => {
-                const isSelected = selectedEvent === albumName;
-                return (
-                  <div
-                    key={albumName}
-                    onClick={() => setSelectedEvent(isSelected ? null : albumName)}
-                    className={`group relative cursor-pointer overflow-hidden rounded-md border-2 bg-card p-2 transition-all hover:-translate-y-0.5 ${
-                      isSelected
-                        ? "border-rust ring-2 ring-rust/40 shadow-lg"
-                        : "border-ink shadow-stamp"
-                    }`}
+            {isLoading ? (
+              <p className="text-muted-foreground">Carregando álbuns da galeria…</p>
+            ) : albumsSummary.length === 0 ? (
+              <Card className="text-center py-14 text-muted-foreground space-y-3">
+                <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground/60" />
+                <h3 className="font-display text-2xl uppercase">Nenhum álbum publicado ainda</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  {isDiretoria
+                    ? "Crie o primeiro álbum da galeria, escolha uma foto de capa e adicione as fotos do evento."
+                    : "Em breve novos álbuns das sessões e campeonatos da A.S.G. serão publicados aqui."}
+                </p>
+                {isDiretoria && (
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateAlbum}
+                    className="btn-stamp inline-flex items-center gap-1.5 mt-2"
                   >
-                    <div className="relative aspect-16/10 w-full overflow-hidden rounded-sm bg-muted border border-ink/20">
-                      {coverPhoto ? (
-                        <img
-                          src={safeImageUrl(coverPhoto.image_url)}
-                          alt={`Capa do álbum ${albumName}`}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <Camera className="h-8 w-8 text-muted-foreground/50" />
-                        </div>
-                      )}
-                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-sm border border-ink bg-amber px-2 py-0.5 font-condensed text-[10px] font-bold uppercase tracking-wider text-ink shadow-xs">
-                        <Star className="h-3 w-3 fill-current" /> Capa do Álbum
-                      </span>
-                      <span className="absolute bottom-2 right-2 rounded-sm bg-black/80 px-2 py-0.5 font-condensed text-[11px] font-bold uppercase text-cream">
-                        {count} {count === 1 ? "foto" : "fotos"}
-                      </span>
-                    </div>
+                    <FolderPlus className="h-4 w-4" /> Criar Primeiro Álbum
+                  </button>
+                )}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {albumsSummary.map(
+                  ({ albumName, albumMeta, description, coverImageUrl, count }) => (
+                    <div
+                      key={albumName}
+                      onClick={() => setSelectedEvent(albumName)}
+                      className="group relative flex flex-col justify-between cursor-pointer overflow-hidden rounded-md border-2 border-ink bg-card p-3 shadow-stamp transition-all hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      <div>
+                        {/* Capa do Álbum */}
+                        <div className="relative aspect-4/3 w-full overflow-hidden rounded-sm bg-muted border border-ink/20">
+                          {coverImageUrl ? (
+                            <img
+                              src={safeImageUrl(coverImageUrl)}
+                              alt={`Capa do álbum ${albumName}`}
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              loading="lazy"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?auto=format&fit=crop&w=600&q=80";
+                              }}
+                            />
+                          ) : (
+                            <div className="flex flex-col h-full w-full items-center justify-center gap-2 text-muted-foreground">
+                              <Camera className="h-10 w-10 opacity-50" />
+                              <span className="font-condensed text-xs uppercase">
+                                Álbum sem capa
+                              </span>
+                            </div>
+                          )}
 
-                    <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                      <div className="min-w-0">
-                        <h3 className="font-display text-base uppercase truncate group-hover:text-rust transition-colors">
-                          {albumName}
-                        </h3>
-                        <p className="text-[11px] text-muted-foreground">
-                          {isSelected ? "Álbum aberto abaixo" : "Clique para abrir o álbum"}
-                        </p>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="inline-flex items-center gap-1.5 rounded-sm border-2 border-cream bg-ink px-3.5 py-1.5 font-condensed text-xs font-bold uppercase tracking-wider text-cream shadow-stamp">
+                              <FolderOpen className="h-4 w-4 text-amber" /> Abrir Álbum ({count}{" "}
+                              {count === 1 ? "foto" : "fotos"})
+                            </span>
+                          </div>
+
+                          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-sm border border-ink bg-amber px-2.5 py-0.5 font-condensed text-[11px] font-bold uppercase tracking-wider text-ink shadow-xs">
+                            <Star className="h-3 w-3 fill-current" /> Álbum A.S.G.
+                          </span>
+
+                          <span className="absolute bottom-2.5 right-2.5 rounded-sm border border-cream/30 bg-black/80 px-2.5 py-0.5 font-condensed text-xs font-bold uppercase text-cream">
+                            {count} {count === 1 ? "foto" : "fotos"}
+                          </span>
+                        </div>
+
+                        {/* Título e Descrição do Álbum */}
+                        <div className="pt-3 px-1">
+                          <h3 className="font-display text-2xl uppercase leading-tight group-hover:text-rust transition-colors">
+                            {albumName}
+                          </h3>
+                          {description ? (
+                            <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {description}
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Clique para visualizar todas as fotos deste álbum.
+                            </p>
+                          )}
+                        </div>
                       </div>
 
-                      {isDiretoria && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNewPhoto(albumName);
-                          }}
-                          className="btn-stamp bg-amber text-ink text-[11px] px-2 py-1 shrink-0 inline-flex items-center gap-1"
-                          title={`Adicionar mais fotos ao álbum ${albumName}`}
-                        >
-                          <Plus className="h-3 w-3" /> + Fotos
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Barra de Controle do Álbum */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border-2 border-ink bg-secondary p-4 shadow-stamp">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 font-condensed text-xs font-bold uppercase tracking-widest text-muted-foreground mr-1">
-              <Filter className="h-3.5 w-3.5 text-rust" /> Filtrar Álbum:
-            </span>
-
-            <button
-              type="button"
-              onClick={() => setSelectedEvent(null)}
-              className={
-                selectedEvent === null
-                  ? "btn-stamp text-xs px-3 py-1.5"
-                  : "btn-ghost-stamp text-xs px-3 py-1.5 bg-card"
-              }
-            >
-              Todos os Registros ({rawList.length})
-            </button>
-
-            {eventsList.map((ev) => (
-              <button
-                key={ev}
-                type="button"
-                onClick={() => setSelectedEvent(ev)}
-                className={
-                  selectedEvent === ev
-                    ? "btn-stamp text-xs px-3 py-1.5"
-                    : "btn-ghost-stamp text-xs px-3 py-1.5 bg-card"
-                }
-              >
-                {ev}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 ml-auto">
-            {filteredList.length > 0 && (
-              <button
-                type="button"
-                onClick={() => handleStartAlbumViewer(0)}
-                className="btn-stamp bg-olive text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
-              >
-                <Images className="h-4 w-4" /> Abrir Apresentação do Álbum
-              </button>
-            )}
-
-            {isDiretoria && (
-              <button
-                type="button"
-                onClick={() => handleNewPhoto(selectedEvent)}
-                className="btn-stamp bg-rust text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
-              >
-                <Plus className="h-4 w-4" />{" "}
-                {selectedEvent ? `Adicionar + Fotos em "${selectedEvent}"` : "Adicionar Fotos"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Grade de Fotos em Estilo Álbum Fotográfico */}
-        {isLoading ? (
-          <p className="text-muted-foreground">Carregando fotos do álbum…</p>
-        ) : filteredList.length === 0 ? (
-          <Card className="text-center py-12 text-muted-foreground space-y-3">
-            <Camera className="mx-auto h-12 w-12 text-muted-foreground/60" />
-            <h3 className="font-display text-2xl uppercase">Nenhuma foto encontrada neste álbum</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {isDiretoria
-                ? "Envie uma ou várias fotos diretamente do seu computador ou da galeria do celular para compor o álbum."
-                : "Em breve novas fotos das sessões e campeonatos da A.S.G. serão publicadas aqui."}
-            </p>
-            {isDiretoria && (
-              <button
-                type="button"
-                onClick={() => handleNewPhoto(selectedEvent)}
-                className="btn-stamp inline-flex items-center gap-1.5 mt-2"
-              >
-                <Plus className="h-4 w-4" /> Adicionar Fotos ao Álbum
-              </button>
-            )}
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredList.map((photo, index) => {
-              const isCover = isPhotoAlbumCover(photo);
-              return (
-                <div
-                  key={photo.id}
-                  onClick={() => handleStartAlbumViewer(index)}
-                  className={`group relative cursor-pointer overflow-hidden rounded-md border-2 bg-card p-2.5 shadow-stamp transition-all hover:-translate-y-1 hover:shadow-lg ${
-                    isCover ? "border-amber ring-2 ring-amber/40" : "border-ink"
-                  }`}
-                >
-                  {/* Moldura da Foto */}
-                  <div className="relative aspect-4/3 w-full overflow-hidden rounded-sm bg-muted border border-ink/20">
-                    <img
-                      src={safeImageUrl(photo.image_url)}
-                      alt={photo.title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?auto=format&fit=crop&w=600&q=80";
-                      }}
-                    />
-
-                    {/* Overlay ao passar o mouse: Abrir no Álbum */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="inline-flex items-center gap-1.5 rounded-sm border-2 border-cream bg-ink px-3 py-1 font-condensed text-xs font-bold uppercase tracking-wider text-cream shadow-stamp">
-                        <Maximize2 className="h-3.5 w-3.5 text-amber" /> Ver no Álbum
-                      </span>
-                    </div>
-
-                    <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1.5">
-                      {photo.event_name && (
-                        <span className="inline-flex items-center rounded-sm border border-ink bg-amber-400 px-2 py-0.5 font-condensed text-[11px] font-bold uppercase tracking-wider text-ink shadow-xs">
-                          {photo.event_name}
+                      {/* Rodapé do Card do Álbum */}
+                      <div className="mt-4 pt-2.5 border-t border-border flex items-center justify-between gap-2 px-1">
+                        <span className="font-condensed text-xs font-bold uppercase tracking-wider text-rust group-hover:underline">
+                          Ver fotos do álbum →
                         </span>
-                      )}
-                      {isCover && (
-                        <span className="inline-flex items-center gap-1 rounded-sm border border-ink bg-ink px-2 py-0.5 font-condensed text-[10px] font-bold uppercase tracking-wider text-amber shadow-xs">
-                          <Star className="h-3 w-3 fill-current" /> Capa do Álbum
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Legenda & Informações */}
-                  <div className="p-2.5 pt-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-display text-lg uppercase leading-snug group-hover:text-rust transition-colors">
-                        {photo.title}
-                      </h3>
-
-                      {isDiretoria && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          {!isCover && (
+                        {isDiretoria && (
+                          <div className="flex items-center gap-1.5">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSetCover(photo);
+                                handleAddPhotosToAlbum(albumName);
                               }}
-                              disabled={setAlbumCoverMutation.isPending}
-                              className="inline-flex items-center gap-1 rounded border border-ink/40 bg-amber/20 px-2 py-1 font-condensed text-[11px] font-bold uppercase text-ink hover:bg-amber transition-colors"
-                              title="Definir esta foto como capa do álbum"
+                              className="btn-stamp bg-amber text-ink text-[11px] px-2.5 py-1 inline-flex items-center gap-1"
+                              title={`Adicionar mais fotos ao álbum ${albumName}`}
                             >
-                              <Star className="h-3 w-3" /> Capa
+                              <Plus className="h-3 w-3" /> + Fotos
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditPhoto(photo);
-                            }}
-                            className="rounded border border-ink/30 bg-muted p-1 text-xs hover:bg-amber-400 hover:text-ink transition-colors"
-                            title="Editar foto do álbum"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditAlbum(albumMeta);
+                              }}
+                              className="rounded border border-ink/30 bg-muted p-1.5 text-xs hover:bg-amber hover:text-ink transition-colors"
+                              title="Editar nome, capa ou excluir álbum"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  ),
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          /* =========================================================
+           * TELA 2: DENTRO DO ÁLBUM SELECIONADO (FOTOS DO ÁLBUM)
+           * ========================================================= */
+          <>
+            {/* Barra de Navegação e Ações Internas do Álbum */}
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border-2 border-ink bg-secondary p-4 shadow-stamp">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedEvent(null)}
+                  className="btn-ghost-stamp bg-card text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Voltar para os Álbuns
+                </button>
 
-                    {photo.caption && (
-                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        {photo.caption}
-                      </p>
-                    )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-xl uppercase leading-none">{selectedEvent}</h2>
+                    <span className="rounded-sm bg-ink px-2 py-0.5 font-condensed text-[11px] font-bold uppercase text-amber">
+                      {filteredList.length} {filteredList.length === 1 ? "foto" : "fotos"}
+                    </span>
                   </div>
+                  {activeAlbumSummary?.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {activeAlbumSummary.description}
+                    </p>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                {filteredList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleStartAlbumViewer(0)}
+                    className="btn-stamp bg-olive text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
+                  >
+                    <Images className="h-4 w-4" /> Apresentação em Tela Cheia
+                  </button>
+                )}
+
+                {isDiretoria && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPhotosToAlbum(selectedEvent)}
+                      className="btn-stamp bg-rust text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
+                    >
+                      <Plus className="h-4 w-4" /> Adicionar + Fotos ao Álbum
+                    </button>
+
+                    {activeAlbumSummary && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditAlbum(activeAlbumSummary.albumMeta)}
+                        className="btn-ghost-stamp bg-card text-xs px-3 py-1.5 inline-flex items-center gap-1.5"
+                      >
+                        <Edit3 className="h-3.5 w-3.5 text-rust" /> Editar Álbum / Capa
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Grade das Fotos pertencentes a este Álbum */}
+            {filteredList.length === 0 ? (
+              <Card className="text-center py-14 text-muted-foreground space-y-3">
+                <Camera className="mx-auto h-12 w-12 text-muted-foreground/60" />
+                <h3 className="font-display text-2xl uppercase">
+                  Este álbum ainda não possui fotos
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  {isDiretoria
+                    ? "Clique no botão abaixo para selecionar uma ou várias fotos de uma só vez e adicioná-las a este álbum."
+                    : "Em breve novas fotos serão adicionadas a este álbum."}
+                </p>
+                {isDiretoria && (
+                  <button
+                    type="button"
+                    onClick={() => handleAddPhotosToAlbum(selectedEvent)}
+                    className="btn-stamp inline-flex items-center gap-1.5 mt-2"
+                  >
+                    <Plus className="h-4 w-4" /> Adicionar Fotos a "{selectedEvent}"
+                  </button>
+                )}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredList.map((photo, index) => {
+                  const isCover = isPhotoAlbumCover(photo);
+                  return (
+                    <div
+                      key={photo.id}
+                      onClick={() => handleStartAlbumViewer(index)}
+                      className={`group relative cursor-pointer overflow-hidden rounded-md border-2 bg-card p-2.5 shadow-stamp transition-all hover:-translate-y-1 hover:shadow-lg ${
+                        isCover ? "border-amber ring-2 ring-amber/40" : "border-ink"
+                      }`}
+                    >
+                      {/* Moldura da Foto */}
+                      <div className="relative aspect-4/3 w-full overflow-hidden rounded-sm bg-muted border border-ink/20">
+                        <img
+                          src={safeImageUrl(photo.image_url)}
+                          alt={photo.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://images.unsplash.com/photo-1520045892732-304bc3ac5d8e?auto=format&fit=crop&w=600&q=80";
+                          }}
+                        />
+
+                        {/* Overlay ao passar o mouse: Ampliar Foto */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="inline-flex items-center gap-1.5 rounded-sm border-2 border-cream bg-ink px-3 py-1 font-condensed text-xs font-bold uppercase tracking-wider text-cream shadow-stamp">
+                            <Maximize2 className="h-3.5 w-3.5 text-amber" /> Ampliar Foto
+                          </span>
+                        </div>
+
+                        {isCover && (
+                          <div className="absolute top-2 left-2">
+                            <span className="inline-flex items-center gap-1 rounded-sm border border-ink bg-amber px-2.5 py-0.5 font-condensed text-[11px] font-bold uppercase tracking-wider text-ink shadow-xs">
+                              <Star className="h-3 w-3 fill-current" /> Capa do Álbum
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Legenda & Ações da Diretoria */}
+                      <div className="p-2.5 pt-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-display text-lg uppercase leading-snug group-hover:text-rust transition-colors">
+                            {photo.title}
+                          </h3>
+
+                          {isDiretoria && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!isCover && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetCover(photo);
+                                  }}
+                                  disabled={setAlbumCoverMutation.isPending}
+                                  className="inline-flex items-center gap-1 rounded border border-ink/40 bg-amber/20 px-2 py-1 font-condensed text-[11px] font-bold uppercase text-ink hover:bg-amber transition-colors"
+                                  title="Definir esta foto como capa do álbum"
+                                >
+                                  <Star className="h-3 w-3" /> Definir Capa
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditPhoto(photo);
+                                }}
+                                className="rounded border border-ink/30 bg-muted p-1 text-xs hover:bg-amber-400 hover:text-ink transition-colors"
+                                title="Editar ou excluir foto"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {photo.caption && (
+                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                            {photo.caption}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </Section>
 
@@ -608,13 +732,22 @@ function GaleriaPage() {
         />
       )}
 
-      {/* Modal de Adição / Edição da Diretoria */}
-      {modalOpen && (
+      {/* Modal de Adição / Edição de Fotos no Álbum */}
+      {photoModalOpen && (
         <GalleryModal
           photo={selectedPhoto}
           defaultEventName={modalDefaultAlbum}
           existingAlbums={eventsList}
-          onClose={() => setModalOpen(false)}
+          onClose={() => setPhotoModalOpen(false)}
+        />
+      )}
+
+      {/* Modal de Criação / Edição de Álbum */}
+      {albumModalOpen && (
+        <AlbumFormModal
+          album={editingAlbum}
+          onClose={() => setAlbumModalOpen(false)}
+          onAlbumSaved={(savedAlbumName) => setSelectedEvent(savedAlbumName)}
         />
       )}
     </>

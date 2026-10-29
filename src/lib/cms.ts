@@ -117,6 +117,14 @@ export interface GalleryPhotoItem {
   sort_order: number;
 }
 
+export interface GalleryAlbumItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  cover_url?: string | null;
+  created_at?: string;
+}
+
 export interface NewsArticleItem {
   id: string;
   title: string;
@@ -607,8 +615,12 @@ export async function uploadGalleryPhoto(file: File): Promise<string> {
     }
   }
 
-  const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").slice(0, 30);
-  const path = `album-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${cleanName}.${ext}`;
+  const baseName =
+    file.name
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .slice(0, 24) || "foto";
+  const path = `album-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${baseName}.${ext}`;
 
   try {
     // 1. Tenta enviar para o bucket dedicado 'gallery'
@@ -1037,6 +1049,242 @@ export function isAlbumCoverPhoto(
   return Boolean(cover && cover.id === photo.id);
 }
 
+export function useGalleryAlbums() {
+  return useQuery({
+    queryKey: ["gallery-albums-meta"],
+    queryFn: async (): Promise<GalleryAlbumItem[]> => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from("site_content")
+          .select("content")
+          .eq("page_slug", "galeria")
+          .eq("section_key", "albums")
+          .maybeSingle();
+
+        if (!error && data?.content && Array.isArray((data.content as any).items)) {
+          const items = (data.content as any).items as GalleryAlbumItem[];
+          setLocalItem("gallery_albums", items);
+          return items;
+        }
+        return getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
+      } catch {
+        return getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
+      }
+    },
+  });
+}
+
+export function useSaveGalleryAlbum() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      oldName?: string | null;
+      name: string;
+      description?: string | null;
+      coverUrl?: string | null;
+      initialPhotos?: Array<{
+        title: string;
+        image_url: string;
+        caption?: string | null;
+        is_cover?: boolean;
+      }>;
+    }) => {
+      const userId = await assertDiretoriaAccess();
+      const cleanName = params.name.trim().slice(0, 120);
+      if (cleanName.length < 2) {
+        throw new Error("Informe um nome válido para o álbum (mínimo de 2 caracteres).");
+      }
+
+      const cleanDesc = params.description?.trim().slice(0, 400) || null;
+      const cleanCover = params.coverUrl ? safeImageUrl(params.coverUrl) || null : null;
+
+      // 1. Ler álbuns existentes em site_content
+      const currentAlbums = getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
+      let remoteAlbums: GalleryAlbumItem[] = currentAlbums;
+      try {
+        const { data } = await (supabase as any)
+          .from("site_content")
+          .select("content")
+          .eq("page_slug", "galeria")
+          .eq("section_key", "albums")
+          .maybeSingle();
+        if (data?.content && Array.isArray((data.content as any).items)) {
+          remoteAlbums = (data.content as any).items as GalleryAlbumItem[];
+        }
+      } catch {
+        // usa cache local
+      }
+
+      const targetOldName = params.oldName?.trim() || null;
+      const existingIdx = remoteAlbums.findIndex(
+        (a) =>
+          a.name.toLowerCase() === (targetOldName || cleanName).toLowerCase() ||
+          a.name.toLowerCase() === cleanName.toLowerCase(),
+      );
+
+      const albumEntry: GalleryAlbumItem = {
+        id: existingIdx >= 0 ? remoteAlbums[existingIdx]!.id : `album-${Date.now()}`,
+        name: cleanName,
+        description: cleanDesc,
+        cover_url: cleanCover ?? (existingIdx >= 0 ? remoteAlbums[existingIdx]!.cover_url : null),
+        created_at:
+          existingIdx >= 0 ? remoteAlbums[existingIdx]!.created_at : new Date().toISOString(),
+      };
+
+      const nextAlbums =
+        existingIdx >= 0
+          ? remoteAlbums.map((a, idx) => (idx === existingIdx ? albumEntry : a))
+          : [albumEntry, ...remoteAlbums];
+
+      await (supabase as any).from("site_content").upsert(
+        {
+          page_slug: "galeria",
+          section_key: "albums",
+          content: { items: nextAlbums },
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "page_slug,section_key" },
+      );
+      setLocalItem("gallery_albums", nextAlbums);
+
+      // 2. Se renomeou um álbum existente, atualizar event_name nas fotos do álbum
+      if (targetOldName && targetOldName !== cleanName) {
+        await (supabase as any)
+          .from("gallery_photos")
+          .update({ event_name: cleanName })
+          .eq("event_name", targetOldName);
+
+        const localPhotos = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+        setLocalItem(
+          "gallery",
+          localPhotos.map((p) =>
+            p.event_name?.trim() === targetOldName ? { ...p, event_name: cleanName } : p,
+          ),
+        );
+      }
+
+      // 3. Se enviou fotos iniciais ao criar/editar o álbum, inserir em gallery_photos
+      const photosToInsert = params.initialPhotos ?? [];
+      if (photosToInsert.length > 0) {
+        const localPhotos = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+        const hasCoverInBatch = photosToInsert.some((p) => p.is_cover);
+        if (hasCoverInBatch) {
+          await (supabase as any)
+            .from("gallery_photos")
+            .update({ sort_order: 1 })
+            .eq("event_name", cleanName)
+            .lt("sort_order", 0);
+        }
+
+        const rows = photosToInsert.map((p, idx) => ({
+          title: p.title.trim().slice(0, 160) || `${cleanName} - Foto ${idx + 1}`,
+          image_url: safeImageUrl(p.image_url),
+          caption: p.caption?.trim().slice(0, 500) || cleanDesc || null,
+          event_name: cleanName,
+          published: true,
+          sort_order: p.is_cover ? -1 : localPhotos.length + idx + 1,
+        }));
+
+        const { data: insertedData } = await (supabase as any)
+          .from("gallery_photos")
+          .insert(rows)
+          .select("*");
+
+        const savedPhotos: GalleryPhotoItem[] =
+          Array.isArray(insertedData) && insertedData.length > 0
+            ? (insertedData as GalleryPhotoItem[])
+            : rows.map((r, i) => ({ id: `photo-${Date.now()}-${i}`, ...r }));
+
+        setLocalItem("gallery", [...localPhotos, ...savedPhotos]);
+      } else if (cleanCover) {
+        // Garantir que se enviou apenas uma capa avulsa para um álbum vazio, ela também exista como foto do álbum
+        const { data: existingAlbumPhotos } = await (supabase as any)
+          .from("gallery_photos")
+          .select("id, image_url")
+          .eq("event_name", cleanName);
+
+        if (!existingAlbumPhotos || existingAlbumPhotos.length === 0) {
+          const coverRow = {
+            title: cleanName,
+            image_url: cleanCover,
+            caption: cleanDesc,
+            event_name: cleanName,
+            published: true,
+            sort_order: -1,
+          };
+          const { data: insertedCover } = await (supabase as any)
+            .from("gallery_photos")
+            .insert(coverRow)
+            .select("*")
+            .maybeSingle();
+
+          const localPhotos = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+          setLocalItem("gallery", [
+            ...localPhotos,
+            (insertedCover as GalleryPhotoItem) || { id: `photo-${Date.now()}`, ...coverRow },
+          ]);
+        }
+      }
+
+      return albumEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-albums-meta"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-photos"] });
+    },
+  });
+}
+
+export function useDeleteGalleryAlbum() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (albumName: string) => {
+      const userId = await assertDiretoriaAccess();
+      const cleanName = albumName.trim();
+
+      // 1. Remover fotos daquele álbum no banco
+      if (cleanName === "Registros Gerais A.S.G.") {
+        await (supabase as any).from("gallery_photos").delete().is("event_name", null);
+      } else {
+        await (supabase as any).from("gallery_photos").delete().eq("event_name", cleanName);
+      }
+
+      // 2. Remover metadados do álbum em site_content
+      const currentAlbums = getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
+      const filteredAlbums = currentAlbums.filter(
+        (a) => a.name.trim().toLowerCase() !== cleanName.toLowerCase(),
+      );
+      await (supabase as any).from("site_content").upsert(
+        {
+          page_slug: "galeria",
+          section_key: "albums",
+          content: { items: filteredAlbums },
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "page_slug,section_key" },
+      );
+      setLocalItem("gallery_albums", filteredAlbums);
+
+      const currentPhotos = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+      setLocalItem(
+        "gallery",
+        currentPhotos.filter(
+          (p) => (p.event_name?.trim() || "Registros Gerais A.S.G.") !== cleanName,
+        ),
+      );
+      return cleanName;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-albums-meta"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-photos"] });
+    },
+  });
+}
+
 export function useGalleryPhotos() {
   return useQuery({
     queryKey: ["gallery-photos"],
@@ -1217,8 +1465,16 @@ export function useSetAlbumCover() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ photoId, eventName }: { photoId: string; eventName?: string | null }) => {
-      await assertDiretoriaAccess();
+    mutationFn: async ({
+      photoId,
+      eventName,
+      imageUrl,
+    }: {
+      photoId: string;
+      eventName?: string | null;
+      imageUrl?: string | null;
+    }) => {
+      const userId = await assertDiretoriaAccess();
       const cleanEvent = eventName?.trim() || null;
 
       if (cleanEvent) {
@@ -1245,6 +1501,29 @@ export function useSetAlbumCover() {
         }
       }
 
+      if (cleanEvent && imageUrl) {
+        const currentAlbums = getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
+        const idx = currentAlbums.findIndex(
+          (a) => a.name.trim().toLowerCase() === cleanEvent.toLowerCase(),
+        );
+        if (idx >= 0) {
+          const updatedAlbums = currentAlbums.map((a, i) =>
+            i === idx ? { ...a, cover_url: imageUrl } : a,
+          );
+          setLocalItem("gallery_albums", updatedAlbums);
+          await (supabase as any).from("site_content").upsert(
+            {
+              page_slug: "galeria",
+              section_key: "albums",
+              content: { items: updatedAlbums },
+              updated_by: userId,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "page_slug,section_key" },
+          );
+        }
+      }
+
       const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
       const updated = current.map((p) => {
         const sameAlbum = (p.event_name?.trim() || null) === cleanEvent;
@@ -1255,7 +1534,10 @@ export function useSetAlbumCover() {
       setLocalItem("gallery", updated);
       return photoId;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-photos"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-albums-meta"] });
+    },
   });
 }
 
