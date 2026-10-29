@@ -548,38 +548,7 @@ export function safeImageUrl(url: string | null | undefined, fallback = ""): str
   return safeExternalUrl(trimmed) ?? fallback;
 }
 
-export async function uploadGalleryPhoto(file: File): Promise<string> {
-  const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowed.includes(file.type)) {
-    throw new Error("Formato não suportado. Envie imagens JPG, PNG ou WebP.");
-  }
-  const maxBytes = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxBytes) {
-    throw new Error("A imagem deve ter no máximo 10MB.");
-  }
-
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-  const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").slice(0, 30);
-  const path = `album-${Date.now()}-${cleanName}.${ext}`;
-
-  try {
-    const { error: uploadError } = await supabase.storage.from("gallery").upload(path, file, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType: file.type,
-    });
-
-    if (!uploadError) {
-      const { data } = supabase.storage.from("gallery").getPublicUrl(path);
-      if (data?.publicUrl) {
-        return data.publicUrl;
-      }
-    }
-  } catch (err) {
-    console.warn("Storage gallery upload fallback:", err);
-  }
-
-  // Fallback seguro em alta definição para exibição em tela cheia no álbum
+async function resizeGalleryImageToDataUrl(file: File, maxDim = 1600): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("Falha ao ler o arquivo da imagem."));
@@ -587,7 +556,6 @@ export async function uploadGalleryPhoto(file: File): Promise<string> {
       const img = new Image();
       img.onerror = () => reject(new Error("Arquivo de imagem corrompido ou inválido."));
       img.onload = () => {
-        const maxDim = 1600;
         let { width, height } = img;
         if (width > height && width > maxDim) {
           height = Math.round((height * maxDim) / width);
@@ -605,12 +573,83 @@ export async function uploadGalleryPhoto(file: File): Promise<string> {
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/webp", 0.88));
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
       };
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   });
+}
+
+export async function uploadGalleryPhoto(file: File): Promise<string> {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("Formato não suportado. Envie imagens JPG, PNG ou WebP.");
+  }
+  const maxBytes = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxBytes) {
+    throw new Error("A imagem deve ter no máximo 10MB.");
+  }
+
+  let uploadBlob: Blob = file;
+  let ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  let contentType = file.type;
+
+  if (file.size > 2.2 * 1024 * 1024) {
+    try {
+      const dataUrl = await resizeGalleryImageToDataUrl(file, 1600);
+      const res = await fetch(dataUrl);
+      uploadBlob = await res.blob();
+      ext = "jpg";
+      contentType = "image/jpeg";
+    } catch {
+      uploadBlob = file;
+    }
+  }
+
+  const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_").slice(0, 30);
+  const path = `album-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${cleanName}.${ext}`;
+
+  try {
+    // 1. Tenta enviar para o bucket dedicado 'gallery'
+    const { error: uploadError } = await supabase.storage.from("gallery").upload(path, uploadBlob, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType,
+    });
+
+    if (!uploadError) {
+      const { data } = supabase.storage.from("gallery").getPublicUrl(path);
+      if (data?.publicUrl) {
+        return data.publicUrl;
+      }
+    }
+
+    // 2. Fallback automático para o bucket público 'avatars' na pasta do usuário autenticado
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    if (userId) {
+      const userGalleryPath = `${userId}/gallery-${path}`;
+      const { error: fallbackUploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(userGalleryPath, uploadBlob, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType,
+        });
+      if (!fallbackUploadErr) {
+        const { data } = supabase.storage.from("avatars").getPublicUrl(userGalleryPath);
+        if (data?.publicUrl) {
+          return data.publicUrl;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Storage gallery upload fallback:", err);
+  }
+
+  // 3. Fallback seguro em alta definição
+  return resizeGalleryImageToDataUrl(file, 1600);
 }
 
 export function safeInternalLink(link: string | null | undefined, fallback = "/"): string {
@@ -981,8 +1020,22 @@ export function useDeleteCompetitionResult() {
 }
 
 // ==========================================
-// Hooks para Fotos da Galeria
+// Hooks para Fotos da Galeria e Álbuns
 // ==========================================
+
+export function getAlbumCoverPhoto(albumPhotos: GalleryPhotoItem[]): GalleryPhotoItem | null {
+  if (!albumPhotos || albumPhotos.length === 0) return null;
+  const explicitCover = albumPhotos.find((p) => (p.sort_order ?? 0) < 0);
+  return explicitCover ?? albumPhotos[0] ?? null;
+}
+
+export function isAlbumCoverPhoto(
+  photo: GalleryPhotoItem,
+  albumPhotos: GalleryPhotoItem[],
+): boolean {
+  const cover = getAlbumCoverPhoto(albumPhotos);
+  return Boolean(cover && cover.id === photo.id);
+}
 
 export function useGalleryPhotos() {
   return useQuery({
@@ -992,7 +1045,8 @@ export function useGalleryPhotos() {
         const { data, error } = await (supabase as any)
           .from("gallery_photos")
           .select("*")
-          .order("sort_order", { ascending: true });
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false });
 
         if (error) {
           if (isMissingTableError(error)) {
@@ -1016,20 +1070,36 @@ export function useSaveGalleryPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (photo: Partial<GalleryPhotoItem> & { title: string; image_url: string }) => {
+    mutationFn: async (
+      photo: Partial<GalleryPhotoItem> & {
+        title: string;
+        image_url: string;
+        is_cover?: boolean;
+      },
+    ) => {
       await assertDiretoriaAccess();
       const validImageUrl = safeImageUrl(photo.image_url);
       if (!validImageUrl) {
         throw new Error("Informe uma URL de imagem válida (https://).");
       }
       const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+      const cleanEvent = photo.event_name?.trim() || null;
+
+      if (photo.is_cover && cleanEvent) {
+        await (supabase as any)
+          .from("gallery_photos")
+          .update({ sort_order: 1 })
+          .eq("event_name", cleanEvent)
+          .lt("sort_order", 0);
+      }
+
       const payload = {
         title: photo.title.trim(),
         image_url: validImageUrl,
         caption: photo.caption?.trim() || null,
-        event_name: photo.event_name?.trim() || null,
+        event_name: cleanEvent,
         published: photo.published ?? true,
-        sort_order: photo.sort_order ?? current.length + 1,
+        sort_order: photo.is_cover ? -1 : (photo.sort_order ?? current.length + 1),
       };
 
       let savedId = photo.id || `photo-${Date.now()}`;
@@ -1054,12 +1124,136 @@ export function useSaveGalleryPhoto() {
       }
 
       const itemToSave: GalleryPhotoItem = { id: savedId, ...payload };
-      const updated = current.some((p) => p.id === photo.id || p.id === savedId)
-        ? current.map((p) => (p.id === photo.id || p.id === savedId ? itemToSave : p))
-        : [...current, itemToSave];
+      const normalizedCurrent =
+        photo.is_cover && cleanEvent
+          ? current.map((p) =>
+              p.event_name?.trim() === cleanEvent && (p.sort_order ?? 0) < 0
+                ? { ...p, sort_order: 1 }
+                : p,
+            )
+          : current;
+
+      const updated = normalizedCurrent.some((p) => p.id === photo.id || p.id === savedId)
+        ? normalizedCurrent.map((p) => (p.id === photo.id || p.id === savedId ? itemToSave : p))
+        : [...normalizedCurrent, itemToSave];
 
       setLocalItem("gallery", updated);
       return itemToSave;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
+  });
+}
+
+export function useSaveMultipleGalleryPhotos() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      items: Array<{
+        title: string;
+        image_url: string;
+        caption?: string | null;
+        event_name?: string | null;
+        published?: boolean;
+        is_cover?: boolean;
+      }>;
+    }) => {
+      await assertDiretoriaAccess();
+      const { items } = params;
+      if (!items.length) {
+        throw new Error("Selecione pelo menos uma foto para enviar ao álbum.");
+      }
+
+      const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+      const coverItem = items.find((i) => i.is_cover && i.event_name?.trim());
+      if (coverItem?.event_name?.trim()) {
+        await (supabase as any)
+          .from("gallery_photos")
+          .update({ sort_order: 1 })
+          .eq("event_name", coverItem.event_name.trim())
+          .lt("sort_order", 0);
+      }
+
+      const rowsToInsert = items.map((item, idx) => {
+        const validImageUrl = safeImageUrl(item.image_url);
+        if (!validImageUrl) {
+          throw new Error(`URL de imagem inválida na foto "${item.title}".`);
+        }
+        return {
+          title: item.title.trim().slice(0, 160) || `Foto ${idx + 1}`,
+          image_url: validImageUrl,
+          caption: item.caption?.trim().slice(0, 500) || null,
+          event_name: item.event_name?.trim().slice(0, 120) || null,
+          published: item.published ?? true,
+          sort_order: item.is_cover ? -1 : current.length + idx + 1,
+        };
+      });
+
+      const { data, error } = await (supabase as any)
+        .from("gallery_photos")
+        .insert(rowsToInsert)
+        .select("*");
+
+      if (error && !isMissingTableError(error)) {
+        throw new Error("Não foi possível salvar as fotos selecionadas no álbum.");
+      }
+
+      const savedItems: GalleryPhotoItem[] =
+        Array.isArray(data) && data.length > 0
+          ? (data as GalleryPhotoItem[])
+          : rowsToInsert.map((r, i) => ({
+              id: `photo-${Date.now()}-${i}`,
+              ...r,
+            }));
+
+      setLocalItem("gallery", [...current, ...savedItems]);
+      return savedItems;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
+  });
+}
+
+export function useSetAlbumCover() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ photoId, eventName }: { photoId: string; eventName?: string | null }) => {
+      await assertDiretoriaAccess();
+      const cleanEvent = eventName?.trim() || null;
+
+      if (cleanEvent) {
+        await (supabase as any)
+          .from("gallery_photos")
+          .update({ sort_order: 1 })
+          .eq("event_name", cleanEvent)
+          .lt("sort_order", 0);
+      } else {
+        await (supabase as any)
+          .from("gallery_photos")
+          .update({ sort_order: 1 })
+          .is("event_name", null)
+          .lt("sort_order", 0);
+      }
+
+      if (!photoId.startsWith("photo-")) {
+        const { error } = await (supabase as any)
+          .from("gallery_photos")
+          .update({ sort_order: -1 })
+          .eq("id", photoId);
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível definir a capa do álbum.");
+        }
+      }
+
+      const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+      const updated = current.map((p) => {
+        const sameAlbum = (p.event_name?.trim() || null) === cleanEvent;
+        if (p.id === photoId) return { ...p, sort_order: -1 };
+        if (sameAlbum && (p.sort_order ?? 0) < 0) return { ...p, sort_order: 1 };
+        return p;
+      });
+      setLocalItem("gallery", updated);
+      return photoId;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
   });

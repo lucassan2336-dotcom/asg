@@ -9,11 +9,13 @@ import { useSession } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 import { ApplicationStatusBadge } from "@/components/ApplicationStatus";
 import {
+  persistUserAvatarEverywhere,
   uploadProfileAvatar,
   useMyAccountProfiles,
   usePublicSkaterProfile,
   validateAvatarFile,
   type AccountKind,
+  type SkateModality,
   type SkateStance,
 } from "@/lib/ranking";
 import {
@@ -143,6 +145,16 @@ function AreaPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    const fallbackAvatar =
+      skaterProfile?.avatar_url ||
+      associateProfile?.avatar_url ||
+      baseProfile?.avatar_url ||
+      (user?.user_metadata?.avatar_url as string | undefined) ||
+      (userId && typeof window !== "undefined"
+        ? localStorage.getItem(`asg_user_avatar_${userId}`)
+        : null) ||
+      null;
+
     if (skaterProfile) {
       setFullName(skaterProfile.full_name || baseProfile?.full_name || "");
       setAge(skaterProfile.age != null ? String(skaterProfile.age) : "");
@@ -150,21 +162,23 @@ function AreaPage() {
       setYearsPracticing(skaterProfile.years_practicing ?? "");
       setFavoriteTrick(skaterProfile.favorite_trick ?? "");
       setStance(skaterProfile.stance ?? "");
-      setAvatarUrl(skaterProfile.avatar_url ?? baseProfile?.avatar_url ?? null);
+      setAvatarUrl(fallbackAvatar);
     } else if (associateProfile) {
       setFullName(associateProfile.full_name || baseProfile?.full_name || "");
       setAge(associateProfile.age != null ? String(associateProfile.age) : "");
-      setAvatarUrl(associateProfile.avatar_url ?? baseProfile?.avatar_url ?? null);
+      setAvatarUrl(fallbackAvatar);
     } else if (baseProfile) {
       setFullName(baseProfile.full_name ?? "");
       setAge(baseProfile.age != null ? String(baseProfile.age) : "");
       setShowAgePublicly(baseProfile.show_age_publicly ?? true);
-      setAvatarUrl(baseProfile.avatar_url ?? null);
+      setAvatarUrl(fallbackAvatar);
+    } else if (fallbackAvatar) {
+      setAvatarUrl(fallbackAvatar);
     }
     if (baseProfile) {
       setPhone(baseProfile.phone ?? "");
     }
-  }, [baseProfile, skaterProfile, associateProfile]);
+  }, [baseProfile, skaterProfile, associateProfile, user, userId]);
 
   async function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -182,26 +196,34 @@ function AreaPage() {
       const uploadedUrl = await uploadProfileAvatar(userId, file);
       setAvatarUrl(uploadedUrl);
 
-      // Persistir imediatamente no perfil correspondente
-      await (supabase as any).from("profiles").update({ avatar_url: uploadedUrl }).eq("id", userId);
+      const rawMod = user?.user_metadata?.modality;
+      const resolvedModality: SkateModality =
+        skaterProfile?.modality ||
+        (rawMod === "vert" || rawMod === "versatil" || rawMod === "escolher_depois"
+          ? rawMod
+          : "street");
 
-      if (skaterProfile) {
-        await (supabase as any)
-          .from("skater_profiles")
-          .update({ avatar_url: uploadedUrl })
-          .eq("user_id", userId);
-      }
-      if (associateProfile) {
-        await (supabase as any)
-          .from("associate_profiles")
-          .update({ avatar_url: uploadedUrl })
-          .eq("user_id", userId);
-      }
+      await persistUserAvatarEverywhere({
+        userId,
+        avatarUrl: uploadedUrl,
+        fullName:
+          fullName ||
+          skaterProfile?.full_name ||
+          associateProfile?.full_name ||
+          baseProfile?.full_name ||
+          (user?.user_metadata?.full_name as string | undefined) ||
+          user?.email?.split("@")[0] ||
+          "Membro A.S.G.",
+        accountType,
+        modality: resolvedModality,
+      });
 
       toast.success("Foto de perfil atualizada com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["my-account-profiles", userId] });
       queryClient.invalidateQueries({ queryKey: ["modality-ranking"] });
       queryClient.invalidateQueries({ queryKey: ["public-skater-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["registered-users-diretoria"] });
+      queryClient.invalidateQueries({ queryKey: ["diretoria-all-members"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível enviar a foto.");
     } finally {

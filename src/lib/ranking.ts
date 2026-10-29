@@ -155,12 +155,23 @@ async function createResizedDataUrl(file: File, maxDim = 320): Promise<string> {
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/webp", 0.85));
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
       };
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   });
+}
+
+async function compressAvatarBlob(file: File, maxDim = 640): Promise<Blob> {
+  if (file.size <= 1.8 * 1024 * 1024) return file;
+  try {
+    const dataUrl = await createResizedDataUrl(file, maxDim);
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  } catch {
+    return file;
+  }
 }
 
 export async function uploadProfileAvatar(userId: string, file: File): Promise<string> {
@@ -169,13 +180,22 @@ export async function uploadProfileAvatar(userId: string, file: File): Promise<s
     throw new Error(validationError);
   }
 
-  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const uploadBody = await compressAvatarBlob(file, 640);
+  const isCompressedJpeg = uploadBody !== file;
+  const ext = isCompressedJpeg
+    ? "jpg"
+    : file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+        ? "webp"
+        : "jpg";
+  const contentType = isCompressedJpeg ? "image/jpeg" : file.type;
   const path = `${userId}/avatar-${Date.now()}.${ext}`;
 
-  const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, {
+  const { error: uploadError } = await supabase.storage.from("avatars").upload(path, uploadBody, {
     cacheControl: "3600",
     upsert: true,
-    contentType: file.type,
+    contentType,
   });
 
   if (!uploadError) {
@@ -187,6 +207,106 @@ export async function uploadProfileAvatar(userId: string, file: File): Promise<s
 
   // Fallback seguro em data URL redimensionada caso o bucket ainda não esteja provisionado
   return createResizedDataUrl(file, 320);
+}
+
+/**
+ * Persiste a foto de perfil do usuário em todas as camadas do banco (profiles, skater_profiles,
+ * associate_profiles, auth.users user_metadata e cache local) para nunca se perder ao recarregar.
+ */
+export async function persistUserAvatarEverywhere(params: {
+  userId: string;
+  avatarUrl: string | null;
+  fullName?: string;
+  accountType?: AccountKind;
+  modality?: SkateModality;
+}): Promise<void> {
+  const { userId, avatarUrl, fullName, accountType, modality } = params;
+  if (!userId) return;
+
+  if (typeof window !== "undefined") {
+    try {
+      if (avatarUrl) {
+        localStorage.setItem(`asg_user_avatar_${userId}`, avatarUrl);
+      } else {
+        localStorage.removeItem(`asg_user_avatar_${userId}`);
+      }
+    } catch {
+      // ignora erro de quota
+    }
+  }
+
+  const cleanName = (fullName || "Membro A.S.G.").trim().slice(0, 100) || "Membro A.S.G.";
+
+  // 1. Salvar em auth.users (user_metadata) quando for URL ou data URL compacta
+  if (avatarUrl && avatarUrl.length < 180_000) {
+    try {
+      await supabase.auth.updateUser({
+        data: { avatar_url: avatarUrl },
+      });
+    } catch {
+      // ignora falha de metadata se sessão estiver expirando
+    }
+  }
+
+  // 2. Atualizar ou inserir em public.profiles
+  const { data: updatedProf } = await (supabase as any)
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", userId)
+    .select("id");
+
+  if (!updatedProf || updatedProf.length === 0) {
+    await (supabase as any).from("profiles").upsert(
+      {
+        id: userId,
+        full_name: cleanName,
+        avatar_url: avatarUrl,
+        ...(accountType ? { account_type: accountType } : {}),
+      },
+      { onConflict: "id" },
+    );
+  }
+
+  // 3. Atualizar ou criar em public.skater_profiles
+  const { data: updatedSkater } = await (supabase as any)
+    .from("skater_profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("user_id", userId)
+    .select("id");
+
+  if ((!updatedSkater || updatedSkater.length === 0) && accountType === "skatista") {
+    const safeModality: SkateModality =
+      modality === "vert" || modality === "versatil" || modality === "escolher_depois"
+        ? modality
+        : "street";
+    await (supabase as any).from("skater_profiles").upsert(
+      {
+        user_id: userId,
+        full_name: cleanName.length >= 2 ? cleanName : "Skatista Local",
+        avatar_url: avatarUrl,
+        modality: safeModality,
+      },
+      { onConflict: "user_id" },
+    );
+  }
+
+  // 4. Atualizar ou criar em public.associate_profiles
+  const { data: updatedAssoc } = await (supabase as any)
+    .from("associate_profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("user_id", userId)
+    .select("user_id");
+
+  if ((!updatedAssoc || updatedAssoc.length === 0) && accountType === "associado") {
+    await (supabase as any).from("associate_profiles").upsert(
+      {
+        user_id: userId,
+        full_name: cleanName,
+        avatar_url: avatarUrl,
+      },
+      { onConflict: "user_id" },
+    );
+  }
 }
 
 /**
@@ -271,8 +391,9 @@ export function useModalityRanking(modality: SkateModality) {
         { _modality: modality },
       );
 
+      let entries: RankingEntry[] = [];
       if (!rpcError && Array.isArray(rpcData)) {
-        return rpcData.map((r: any) => ({
+        entries = rpcData.map((r: any) => ({
           skater_id: r.skater_id,
           user_id: r.user_id,
           full_name: r.full_name,
@@ -289,16 +410,48 @@ export function useModalityRanking(modality: SkateModality) {
           rank_position: Number(r.rank_position ?? 1),
           trophy_tier: (r.trophy_tier as TrophyTier | null) ?? null,
         }));
+      } else {
+        const { data: skaters, error } = await (supabase as any)
+          .from("skater_profiles")
+          .select("*")
+          .or(`modality.eq.${modality},modality.eq.versatil`)
+          .eq("is_active", true);
+
+        if (error || !skaters) return [];
+        entries = computeModalityRanking(skaters as SkaterProfileRow[], modality);
       }
 
-      const { data: skaters, error } = await (supabase as any)
-        .from("skater_profiles")
-        .select("*")
-        .or(`modality.eq.${modality},modality.eq.versatil`)
-        .eq("is_active", true);
+      // Garantir que fotos salvas em profiles ou cache local apareçam para todos os skatistas
+      const missingAvatarUserIds = entries
+        .filter((e) => !e.avatar_url && e.user_id)
+        .map((e) => e.user_id);
 
-      if (error || !skaters) return [];
-      return computeModalityRanking(skaters as SkaterProfileRow[], modality);
+      if (missingAvatarUserIds.length > 0) {
+        const { data: profAvatars } = await (supabase as any)
+          .from("profiles")
+          .select("id, avatar_url")
+          .in("id", missingAvatarUserIds);
+
+        const avatarMap = new Map<string, string>();
+        for (const p of profAvatars ?? []) {
+          if (p?.id && p?.avatar_url) {
+            avatarMap.set(p.id, p.avatar_url);
+          }
+        }
+
+        entries = entries.map((e) => {
+          if (e.avatar_url) return e;
+          const fallbackUrl =
+            avatarMap.get(e.user_id) ||
+            (typeof window !== "undefined"
+              ? localStorage.getItem(`asg_user_avatar_${e.user_id}`)
+              : null) ||
+            null;
+          return fallbackUrl ? { ...e, avatar_url: fallbackUrl } : e;
+        });
+      }
+
+      return entries;
     },
   });
 }
@@ -417,6 +570,23 @@ export function usePublicSkaterProfile(skaterId: string) {
 
       if (!rankEntry) return null;
 
+      if (!rankEntry.avatar_url && rawSkater.user_id) {
+        const { data: baseProf } = await (supabase as any)
+          .from("profiles")
+          .select("avatar_url")
+          .eq("id", rawSkater.user_id)
+          .maybeSingle();
+        const fallbackAvatar =
+          baseProf?.avatar_url ||
+          (typeof window !== "undefined"
+            ? localStorage.getItem(`asg_user_avatar_${rawSkater.user_id}`)
+            : null) ||
+          null;
+        if (fallbackAvatar) {
+          rankEntry = { ...rankEntry, avatar_url: fallbackAvatar };
+        }
+      }
+
       // Buscar histórico de campeonatos
       let history: ChampionshipHistoryEntry[] = [];
       const { data: rpcHistory, error: histErr } = await (supabase as any).rpc(
@@ -481,25 +651,80 @@ export function useMyAccountProfiles(userId?: string) {
     queryKey: ["my-account-profiles", userId],
     enabled: Boolean(userId),
     queryFn: async () => {
-      const [{ data: baseProfile }, { data: skaterProfile }, { data: associateProfile }] =
-        await Promise.all([
-          supabase.from("profiles").select("*").eq("id", userId!).maybeSingle(),
-          (supabase as any)
+      const [
+        { data: baseProfile },
+        { data: skaterProfile },
+        { data: associateProfile },
+        { data: authData },
+      ] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId!).maybeSingle(),
+        (supabase as any).from("skater_profiles").select("*").eq("user_id", userId!).maybeSingle(),
+        (supabase as any)
+          .from("associate_profiles")
+          .select("*")
+          .eq("user_id", userId!)
+          .maybeSingle(),
+        supabase.auth.getUser(),
+      ]);
+
+      const metaAvatar = (authData?.user?.user_metadata?.avatar_url as string | undefined) || null;
+      const localAvatar =
+        typeof window !== "undefined" ? localStorage.getItem(`asg_user_avatar_${userId}`) : null;
+
+      const resolvedAvatar =
+        (skaterProfile as any)?.avatar_url ||
+        (associateProfile as any)?.avatar_url ||
+        (baseProfile as any)?.avatar_url ||
+        metaAvatar ||
+        localAvatar ||
+        null;
+
+      // Sincronizar automaticamente caso alguma das tabelas ainda esteja sem o avatar_url salvo
+      if (resolvedAvatar) {
+        if (baseProfile && !(baseProfile as any).avatar_url) {
+          (baseProfile as any).avatar_url = resolvedAvatar;
+          void (supabase as any)
+            .from("profiles")
+            .update({ avatar_url: resolvedAvatar })
+            .eq("id", userId!);
+        }
+        if (skaterProfile && !(skaterProfile as any).avatar_url) {
+          (skaterProfile as any).avatar_url = resolvedAvatar;
+          void (supabase as any)
             .from("skater_profiles")
-            .select("*")
-            .eq("user_id", userId!)
-            .maybeSingle(),
-          (supabase as any)
+            .update({ avatar_url: resolvedAvatar })
+            .eq("user_id", userId!);
+        }
+        if (associateProfile && !(associateProfile as any).avatar_url) {
+          (associateProfile as any).avatar_url = resolvedAvatar;
+          void (supabase as any)
             .from("associate_profiles")
-            .select("*")
-            .eq("user_id", userId!)
-            .maybeSingle(),
-        ]);
+            .update({ avatar_url: resolvedAvatar })
+            .eq("user_id", userId!);
+        }
+      }
 
       return {
-        baseProfile: (baseProfile as any) ?? null,
-        skaterProfile: (skaterProfile as SkaterProfileRow | null) ?? null,
-        associateProfile: (associateProfile as AssociateProfileRow | null) ?? null,
+        baseProfile: baseProfile
+          ? ({
+              ...(baseProfile as any),
+              avatar_url: (baseProfile as any).avatar_url ?? resolvedAvatar,
+            } as any)
+          : resolvedAvatar
+            ? ({ id: userId, avatar_url: resolvedAvatar } as any)
+            : null,
+        skaterProfile: skaterProfile
+          ? ({
+              ...(skaterProfile as SkaterProfileRow),
+              avatar_url: (skaterProfile as SkaterProfileRow).avatar_url ?? resolvedAvatar,
+            } as SkaterProfileRow)
+          : null,
+        associateProfile: associateProfile
+          ? ({
+              ...(associateProfile as AssociateProfileRow),
+              avatar_url: (associateProfile as AssociateProfileRow).avatar_url ?? resolvedAvatar,
+            } as AssociateProfileRow)
+          : null,
       };
     },
   });

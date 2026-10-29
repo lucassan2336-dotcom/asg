@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { Database } from "@/integrations/supabase/types";
 import { useAdminManageSkaterProfile, type SkateModality } from "@/lib/ranking";
+import { SkaterAvatar } from "@/components/TrophyBadges";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -114,18 +115,39 @@ export function MembersRolesPanel() {
   const [busy, setBusy] = useState(false);
 
   const {
-    data: skaterProfilesMap = new Map<string, { modality: SkateModality; is_active: boolean }>(),
+    data: skaterProfilesMap = new Map<
+      string,
+      { modality: SkateModality; is_active: boolean; avatar_url: string | null }
+    >(),
   } = useQuery({
     queryKey: ["diretoria-all-members"],
     queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from("skater_profiles")
-        .select("user_id, modality, is_active");
-      const map = new Map<string, { modality: SkateModality; is_active: boolean }>();
-      for (const row of data ?? []) {
+      const [{ data: skaters }, { data: baseProfs }, { data: assocProfs }] = await Promise.all([
+        (supabase as any)
+          .from("skater_profiles")
+          .select("user_id, modality, is_active, avatar_url"),
+        (supabase as any).from("profiles").select("id, avatar_url"),
+        (supabase as any).from("associate_profiles").select("user_id, avatar_url"),
+      ]);
+      const avatarByUser = new Map<string, string>();
+      for (const p of baseProfs ?? []) {
+        if (p?.id && p?.avatar_url) avatarByUser.set(p.id, p.avatar_url);
+      }
+      for (const a of assocProfs ?? []) {
+        if (a?.user_id && a?.avatar_url) avatarByUser.set(a.user_id, a.avatar_url);
+      }
+      const map = new Map<
+        string,
+        { modality: SkateModality; is_active: boolean; avatar_url: string | null }
+      >();
+      for (const [uid, av] of avatarByUser.entries()) {
+        map.set(uid, { modality: "street", is_active: false, avatar_url: av });
+      }
+      for (const row of skaters ?? []) {
         map.set(row.user_id, {
           modality: row.modality as SkateModality,
           is_active: Boolean(row.is_active),
+          avatar_url: row.avatar_url || avatarByUser.get(row.user_id) || null,
         });
       }
       return map;
@@ -456,17 +478,26 @@ export function MembersRolesPanel() {
                     className="border-b border-border/80 transition-colors hover:bg-muted/20"
                   >
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{u.full_name}</span>
-                        {isSelf && (
-                          <span className="rounded bg-ink px-1.5 py-0.5 font-condensed text-[10px] font-bold uppercase tracking-wider text-cream">
-                            Você
+                      <div className="flex items-center gap-2.5">
+                        <SkaterAvatar
+                          name={u.full_name}
+                          avatarUrl={skaterInfo?.avatar_url ?? null}
+                          size="sm"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-foreground">{u.full_name}</span>
+                            {isSelf && (
+                              <span className="rounded bg-ink px-1.5 py-0.5 font-condensed text-[10px] font-bold uppercase tracking-wider text-cream">
+                                Você
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground block">
+                            Desde {new Date(u.created_at).toLocaleDateString("pt-BR")}
                           </span>
-                        )}
+                        </div>
                       </div>
-                      <span className="text-xs text-muted-foreground block">
-                        Desde {new Date(u.created_at).toLocaleDateString("pt-BR")}
-                      </span>
                     </td>
 
                     <td className="p-3 text-xs text-muted-foreground">
