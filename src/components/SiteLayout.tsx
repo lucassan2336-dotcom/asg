@@ -1,44 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Menu, X, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyRoles, useSession } from "@/lib/auth";
 import logo from "@/assets/logo-asg-nova.png.asset.json";
-import logoAssetUrl from "@/assets/logo-asg.png";
-
-const LOGO_SOURCES = Array.from(
-  new Set(
-    [
-      logoAssetUrl,
-      "/logo-asg.png",
-      "https://hriafazfexhtyjhgbmie.supabase.co/storage/v1/object/public/gallery/logo-asg.png",
-      logo.url,
-    ].filter((u): u is string => typeof u === "string" && u.length > 0),
-  ),
-);
-
-export function AsgLogo({
-  alt = "Logo A.S.G.",
-  className = "h-12 w-12 object-contain",
-}: {
-  alt?: string;
-  className?: string;
-}) {
-  const [sourceIndex, setSourceIndex] = useState(0);
-  const currentSrc = LOGO_SOURCES[sourceIndex] ?? "/logo-asg.png";
-
-  return (
-    <img
-      src={currentSrc}
-      alt={alt}
-      className={className}
-      onError={() => {
-        setSourceIndex((prev) => (prev + 1 < LOGO_SOURCES.length ? prev + 1 : prev));
-      }}
-    />
-  );
-}
 
 export const NAV = [
   { to: "/", label: "Início" },
@@ -60,24 +26,6 @@ export function Header() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (typeof supabase.channel !== "function") return;
-    const channel = supabase
-      .channel("asg-realtime-db-sync")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public" },
-        () => {
-          queryClient.invalidateQueries();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
@@ -90,7 +38,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
         <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-          <AsgLogo alt="Logo A.S.G." className="h-12 w-12 object-contain" />
+          <img src={logo.url} alt="Logo A.S.G." className="h-12 w-12 object-contain" />
           <span className="font-display text-xl">A.S.G.</span>
         </Link>
         <nav className="hidden items-center gap-1 lg:flex">
@@ -202,7 +150,7 @@ export function Footer() {
     <footer className="mt-20 border-t-4 border-ink bg-ink text-cream">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-3">
         <div className="flex items-center gap-4">
-          <AsgLogo alt="" className="h-20 w-20 object-contain" />
+          <img src={logo.url} alt="" className="h-20 w-20 object-contain" />
           <div>
             <p className="font-display text-2xl">A.S.G.</p>
             <p className="text-sm opacity-80">Associação dos Skatistas de Guararema</p>
@@ -231,12 +179,10 @@ export function Footer() {
 export function PageHero({
   eyebrow,
   title,
-  actions,
   children,
 }: {
   eyebrow: string;
   title: string;
-  actions?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -249,7 +195,6 @@ export function PageHero({
           {title}
         </h1>
         {children && <div className="mt-4 max-w-2xl text-lg text-cream/90">{children}</div>}
-        {actions && <div className="mt-6 flex flex-wrap items-center gap-3">{actions}</div>}
       </div>
     </section>
   );

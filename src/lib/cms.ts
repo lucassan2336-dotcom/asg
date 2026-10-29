@@ -672,7 +672,7 @@ function setLocalItem<T>(key: string, value: T): void {
 }
 
 // ==========================================
-// Hooks do React Query para Páginas do Site (100% sincronizado com Supabase)
+// Hooks do React Query para Páginas do Site
 // ==========================================
 
 export function usePageContent<T>(
@@ -709,8 +709,7 @@ export function usePageContent<T>(
         return defaultVal;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 60_000,
   });
 
   return {
@@ -745,8 +744,8 @@ export function useSavePageContent() {
         { onConflict: "page_slug,section_key" },
       );
 
-      if (error) {
-        throw new Error(error.message || "Não foi possível salvar o conteúdo da página no banco de dados.");
+      if (error && !isMissingTableError(error)) {
+        throw new Error("Não foi possível salvar o conteúdo da página.");
       }
 
       setLocalItem(`page_${pageSlug}_${sectionKey}`, content);
@@ -756,7 +755,6 @@ export function useSavePageContent() {
       queryClient.invalidateQueries({
         queryKey: ["site-content", vars.pageSlug, vars.sectionKey ?? "main"],
       });
-      queryClient.invalidateQueries({ queryKey: ["site-content"] });
     },
   });
 }
@@ -781,15 +779,15 @@ export function useProjects() {
           }
           return DEFAULT_PROJECTS;
         }
-        const items = (data ?? []) as ProjectItem[];
-        setLocalItem("projects", items);
-        return items;
+        if (!data || data.length === 0) {
+          return DEFAULT_PROJECTS;
+        }
+        setLocalItem("projects", data);
+        return data as ProjectItem[];
       } catch {
         return DEFAULT_PROJECTS;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -798,8 +796,8 @@ export function useSaveProject() {
 
   return useMutation({
     mutationFn: async (project: Partial<ProjectItem> & { title: string; description: string }) => {
-      const userId = await assertDiretoriaAccess();
-      const current = getLocalItem<ProjectItem[]>("projects", []);
+      await assertDiretoriaAccess();
+      const current = getLocalItem<ProjectItem[]>("projects", DEFAULT_PROJECTS);
       const cleanImageUrl = project.image_url ? safeImageUrl(project.image_url) || null : null;
 
       const payload = {
@@ -812,28 +810,33 @@ export function useSaveProject() {
         sort_order: project.sort_order ?? current.length + 1,
       };
 
-      let savedId = project.id || "";
+      let savedId = project.id || `proj-${Date.now()}`;
       if (project.id && !project.id.startsWith("proj-")) {
         const { error } = await (supabase as any)
           .from("site_projects")
           .update(payload)
           .eq("id", project.id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível atualizar o projeto no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível atualizar o projeto.");
         }
       } else {
         const { data, error } = await (supabase as any)
           .from("site_projects")
-          .insert({ ...payload, created_by: userId })
+          .insert(payload)
           .select("id")
           .single();
-        if (error) {
-          throw new Error(error.message || "Não foi possível cadastrar o projeto no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível cadastrar o projeto.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: ProjectItem = { id: savedId, ...payload };
+      const updated = current.some((p) => p.id === project.id || p.id === savedId)
+        ? current.map((p) => (p.id === project.id || p.id === savedId ? itemToSave : p))
+        : [...current, itemToSave];
+
+      setLocalItem("projects", updated);
       return itemToSave;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-projects"] }),
@@ -848,10 +851,15 @@ export function useDeleteProject() {
       await assertDiretoriaAccess();
       if (!id.startsWith("proj-")) {
         const { error } = await (supabase as any).from("site_projects").delete().eq("id", id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível excluir o projeto do banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível excluir o projeto.");
         }
       }
+      const current = getLocalItem<ProjectItem[]>("projects", DEFAULT_PROJECTS);
+      setLocalItem(
+        "projects",
+        current.filter((p) => p.id !== id),
+      );
       return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-projects"] }),
@@ -878,15 +886,15 @@ export function useCompetitionResults() {
           }
           return DEFAULT_RESULTS;
         }
-        const items = (data ?? []) as CompetitionResultItem[];
-        setLocalItem("results", items);
-        return items;
+        if (!data || data.length === 0) {
+          return DEFAULT_RESULTS;
+        }
+        setLocalItem("results", data);
+        return data as CompetitionResultItem[];
       } catch {
         return DEFAULT_RESULTS;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -902,7 +910,8 @@ export function useSaveCompetitionResult() {
         athlete_name: string;
       },
     ) => {
-      const userId = await assertDiretoriaAccess();
+      await assertDiretoriaAccess();
+      const current = getLocalItem<CompetitionResultItem[]>("results", DEFAULT_RESULTS);
       const payload = {
         championship_name: res.championship_name.trim(),
         category: res.category.trim(),
@@ -915,28 +924,33 @@ export function useSaveCompetitionResult() {
         sort_order: res.sort_order ?? res.position,
       };
 
-      let savedId = res.id || "";
+      let savedId = res.id || `res-${Date.now()}`;
       if (res.id && !res.id.startsWith("res-")) {
         const { error } = await (supabase as any)
           .from("competition_results")
           .update(payload)
           .eq("id", res.id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível atualizar o resultado no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível atualizar o resultado.");
         }
       } else {
         const { data, error } = await (supabase as any)
           .from("competition_results")
-          .insert({ ...payload, created_by: userId })
+          .insert(payload)
           .select("id")
           .single();
-        if (error) {
-          throw new Error(error.message || "Não foi possível cadastrar o resultado no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível cadastrar o resultado.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: CompetitionResultItem = { id: savedId, ...payload };
+      const updated = current.some((r) => r.id === res.id || r.id === savedId)
+        ? current.map((r) => (r.id === res.id || r.id === savedId ? itemToSave : r))
+        : [...current, itemToSave];
+
+      setLocalItem("results", updated);
       return itemToSave;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["competition-results"] }),
@@ -951,10 +965,15 @@ export function useDeleteCompetitionResult() {
       await assertDiretoriaAccess();
       if (!id.startsWith("res-")) {
         const { error } = await (supabase as any).from("competition_results").delete().eq("id", id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível excluir o resultado do banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível excluir o resultado.");
         }
       }
+      const current = getLocalItem<CompetitionResultItem[]>("results", DEFAULT_RESULTS);
+      setLocalItem(
+        "results",
+        current.filter((r) => r.id !== id),
+      );
       return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["competition-results"] }),
@@ -981,15 +1000,15 @@ export function useGalleryPhotos() {
           }
           return DEFAULT_GALLERY;
         }
-        const items = (data ?? []) as GalleryPhotoItem[];
-        setLocalItem("gallery", items);
-        return items;
+        if (!data || data.length === 0) {
+          return DEFAULT_GALLERY;
+        }
+        setLocalItem("gallery", data);
+        return data as GalleryPhotoItem[];
       } catch {
         return DEFAULT_GALLERY;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -998,12 +1017,12 @@ export function useSaveGalleryPhoto() {
 
   return useMutation({
     mutationFn: async (photo: Partial<GalleryPhotoItem> & { title: string; image_url: string }) => {
-      const userId = await assertDiretoriaAccess();
+      await assertDiretoriaAccess();
       const validImageUrl = safeImageUrl(photo.image_url);
       if (!validImageUrl) {
-        throw new Error("Informe uma imagem válida (upload do dispositivo ou URL https://).");
+        throw new Error("Informe uma URL de imagem válida (https://).");
       }
-      const current = getLocalItem<GalleryPhotoItem[]>("gallery", []);
+      const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
       const payload = {
         title: photo.title.trim(),
         image_url: validImageUrl,
@@ -1013,28 +1032,33 @@ export function useSaveGalleryPhoto() {
         sort_order: photo.sort_order ?? current.length + 1,
       };
 
-      let savedId = photo.id || "";
+      let savedId = photo.id || `photo-${Date.now()}`;
       if (photo.id && !photo.id.startsWith("photo-")) {
         const { error } = await (supabase as any)
           .from("gallery_photos")
           .update(payload)
           .eq("id", photo.id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível atualizar a foto no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível atualizar a foto.");
         }
       } else {
         const { data, error } = await (supabase as any)
           .from("gallery_photos")
-          .insert({ ...payload, created_by: userId })
+          .insert(payload)
           .select("id")
           .single();
-        if (error) {
-          throw new Error(error.message || "Não foi possível salvar a foto no banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível adicionar a foto.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: GalleryPhotoItem = { id: savedId, ...payload };
+      const updated = current.some((p) => p.id === photo.id || p.id === savedId)
+        ? current.map((p) => (p.id === photo.id || p.id === savedId ? itemToSave : p))
+        : [...current, itemToSave];
+
+      setLocalItem("gallery", updated);
       return itemToSave;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
@@ -1049,10 +1073,15 @@ export function useDeleteGalleryPhoto() {
       await assertDiretoriaAccess();
       if (!id.startsWith("photo-")) {
         const { error } = await (supabase as any).from("gallery_photos").delete().eq("id", id);
-        if (error) {
-          throw new Error(error.message || "Não foi possível excluir a foto do banco de dados.");
+        if (error && !isMissingTableError(error)) {
+          throw new Error("Não foi possível excluir a foto.");
         }
       }
+      const current = getLocalItem<GalleryPhotoItem[]>("gallery", DEFAULT_GALLERY);
+      setLocalItem(
+        "gallery",
+        current.filter((p) => p.id !== id),
+      );
       return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
@@ -1073,18 +1102,15 @@ export function useNewsArticles() {
           .select("id, title, slug, summary, body, cover_url, published, published_at")
           .order("published_at", { ascending: false });
 
-        if (error) {
+        if (error || !data || data.length === 0) {
           return DEFAULT_NEWS;
         }
-        const items = (data ?? []) as NewsArticleItem[];
-        setLocalItem("news", items);
-        return items;
+        setLocalItem("news", data);
+        return data as NewsArticleItem[];
       } catch {
         return DEFAULT_NEWS;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -1093,7 +1119,8 @@ export function useSaveNewsArticle() {
 
   return useMutation({
     mutationFn: async (article: Partial<NewsArticleItem> & { title: string; body: string }) => {
-      const userId = await assertDiretoriaAccess();
+      await assertDiretoriaAccess();
+      const current = getLocalItem<NewsArticleItem[]>("news", DEFAULT_NEWS);
       const baseSlug =
         article.slug ||
         article.title
@@ -1116,25 +1143,30 @@ export function useSaveNewsArticle() {
         published_at: article.published_at || new Date().toISOString(),
       };
 
-      let savedId = article.id || "";
+      let savedId = article.id || `news-${Date.now()}`;
       if (article.id && !article.id.startsWith("news-")) {
         const { error } = await supabase.from("news_articles").update(payload).eq("id", article.id);
         if (error) {
-          throw new Error(error.message || "Não foi possível atualizar a notícia no banco de dados.");
+          throw new Error("Não foi possível atualizar a notícia.");
         }
       } else {
         const { data, error } = await supabase
           .from("news_articles")
-          .insert({ ...payload, created_by: userId })
+          .insert(payload)
           .select("id")
           .single();
         if (error) {
-          throw new Error(error.message || "Não foi possível publicar a notícia no banco de dados.");
+          throw new Error("Não foi possível publicar a notícia.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: NewsArticleItem = { id: savedId, ...payload };
+      const updated = current.some((n) => n.id === article.id || n.id === savedId)
+        ? current.map((n) => (n.id === article.id || n.id === savedId ? itemToSave : n))
+        : [itemToSave, ...current];
+
+      setLocalItem("news", updated);
       return itemToSave;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["news-articles"] }),
@@ -1150,9 +1182,14 @@ export function useDeleteNewsArticle() {
       if (!id.startsWith("news-")) {
         const { error } = await supabase.from("news_articles").delete().eq("id", id);
         if (error) {
-          throw new Error(error.message || "Não foi possível excluir a notícia do banco de dados.");
+          throw new Error("Não foi possível excluir a notícia.");
         }
       }
+      const current = getLocalItem<NewsArticleItem[]>("news", DEFAULT_NEWS);
+      setLocalItem(
+        "news",
+        current.filter((n) => n.id !== id),
+      );
       return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["news-articles"] }),
@@ -1173,18 +1210,15 @@ export function useSiteEvents() {
           .select("id, title, description, location, starts_at, registration_open, published")
           .order("starts_at", { ascending: true });
 
-        if (error) {
+        if (error || !data || data.length === 0) {
           return DEFAULT_EVENTS;
         }
-        const items = (data ?? []) as EventItem[];
-        setLocalItem("events", items);
-        return items;
+        setLocalItem("events", data);
+        return data as EventItem[];
       } catch {
         return DEFAULT_EVENTS;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -1193,7 +1227,8 @@ export function useSaveSiteEvent() {
 
   return useMutation({
     mutationFn: async (event: Partial<EventItem> & { title: string; description: string }) => {
-      const userId = await assertDiretoriaAccess();
+      await assertDiretoriaAccess();
+      const current = getLocalItem<EventItem[]>("events", DEFAULT_EVENTS);
       const payload = {
         title: event.title.trim(),
         description: event.description.trim(),
@@ -1203,31 +1238,29 @@ export function useSaveSiteEvent() {
         published: event.published ?? true,
       };
 
-      let savedId = event.id || "";
+      let savedId = event.id || `event-${Date.now()}`;
       if (event.id && !event.id.startsWith("event-")) {
         const { error } = await supabase.from("events").update(payload).eq("id", event.id);
         if (error) {
-          throw new Error(error.message || "Não foi possível atualizar o evento no banco de dados.");
+          throw new Error("Não foi possível atualizar o evento.");
         }
       } else {
-        const { data, error } = await supabase
-          .from("events")
-          .insert({ ...payload, created_by: userId })
-          .select("id")
-          .single();
+        const { data, error } = await supabase.from("events").insert(payload).select("id").single();
         if (error) {
-          throw new Error(error.message || "Não foi possível cadastrar o evento no banco de dados.");
+          throw new Error("Não foi possível cadastrar o evento.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: EventItem = { id: savedId, ...payload };
+      const updated = current.some((e) => e.id === event.id || e.id === savedId)
+        ? current.map((e) => (e.id === event.id || e.id === savedId ? itemToSave : e))
+        : [...current, itemToSave];
+
+      setLocalItem("events", updated);
       return itemToSave;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["site-events"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-events"] }),
   });
 }
 
@@ -1240,15 +1273,17 @@ export function useDeleteSiteEvent() {
       if (!id.startsWith("event-")) {
         const { error } = await supabase.from("events").delete().eq("id", id);
         if (error) {
-          throw new Error(error.message || "Não foi possível excluir o evento do banco de dados.");
+          throw new Error("Não foi possível excluir o evento.");
         }
       }
+      const current = getLocalItem<EventItem[]>("events", DEFAULT_EVENTS);
+      setLocalItem(
+        "events",
+        current.filter((e) => e.id !== id),
+      );
       return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["site-events"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-events"] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-events"] }),
   });
 }
 
@@ -1266,18 +1301,15 @@ export function useSponsors() {
           .select("id, name, logo_url, website, sort_order, published")
           .order("sort_order", { ascending: true });
 
-        if (error) {
+        if (error || !data || data.length === 0) {
           return DEFAULT_SPONSORS;
         }
-        const items = (data ?? []) as SponsorItem[];
-        setLocalItem("sponsors", items);
-        return items;
+        setLocalItem("sponsors", data);
+        return data as SponsorItem[];
       } catch {
         return DEFAULT_SPONSORS;
       }
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
   });
 }
 
@@ -1287,7 +1319,7 @@ export function useSaveSponsor() {
   return useMutation({
     mutationFn: async (sponsor: Partial<SponsorItem> & { name: string }) => {
       await assertDiretoriaAccess();
-      const current = getLocalItem<SponsorItem[]>("sponsors", []);
+      const current = getLocalItem<SponsorItem[]>("sponsors", DEFAULT_SPONSORS);
       const cleanWebsite = sponsor.website ? safeExternalUrl(sponsor.website) : null;
       if (sponsor.website && !cleanWebsite) {
         throw new Error("Informe um website válido iniciado por https:// ou http://.");
@@ -1302,11 +1334,11 @@ export function useSaveSponsor() {
         published: sponsor.published ?? true,
       };
 
-      let savedId = sponsor.id || "";
+      let savedId = sponsor.id || `spon-${Date.now()}`;
       if (sponsor.id && !sponsor.id.startsWith("spon-")) {
         const { error } = await supabase.from("sponsors").update(payload).eq("id", sponsor.id);
         if (error) {
-          throw new Error(error.message || "Não foi possível atualizar o apoiador no banco de dados.");
+          throw new Error("Não foi possível atualizar o apoiador.");
         }
       } else {
         const { data, error } = await supabase
@@ -1315,12 +1347,17 @@ export function useSaveSponsor() {
           .select("id")
           .single();
         if (error) {
-          throw new Error(error.message || "Não foi possível cadastrar o apoiador no banco de dados.");
+          throw new Error("Não foi possível cadastrar o apoiador.");
         }
         if (data?.id) savedId = data.id;
       }
 
       const itemToSave: SponsorItem = { id: savedId, ...payload };
+      const updated = current.some((s) => s.id === sponsor.id || s.id === savedId)
+        ? current.map((s) => (s.id === sponsor.id || s.id === savedId ? itemToSave : s))
+        : [...current, itemToSave];
+
+      setLocalItem("sponsors", updated);
       return itemToSave;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-sponsors"] }),
@@ -1336,9 +1373,14 @@ export function useDeleteSponsor() {
       if (!id.startsWith("spon-")) {
         const { error } = await supabase.from("sponsors").delete().eq("id", id);
         if (error) {
-          throw new Error(error.message || "Não foi possível remover o apoiador do banco de dados.");
+          throw new Error("Não foi possível remover o apoiador.");
         }
       }
+      const current = getLocalItem<SponsorItem[]>("sponsors", DEFAULT_SPONSORS);
+      setLocalItem(
+        "sponsors",
+        current.filter((s) => s.id !== id),
+      );
       return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["site-sponsors"] }),

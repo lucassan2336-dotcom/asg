@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Flame, Shield, UserCheck, Trophy, CheckCircle2, Sparkles, Clock } from "lucide-react";
 import { toast } from "sonner";
-import { supabase, signInWithLegacyFallback } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { EditablePageToolbar } from "@/components/EditablePageToolbar";
 import { safeRedirect, useSession } from "@/lib/auth";
@@ -159,7 +159,7 @@ function AuthPage() {
 
         setConfirmSent(true);
       } else {
-        const { error } = await signInWithLegacyFallback(email, password);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         navigate({ to: safeRedirect(redirectTarget) });
       }
