@@ -104,7 +104,7 @@ export function ModalityBadge({
   size?: "sm" | "md";
 }) {
   let label = "Street";
-  let bg = "bg-rust text-cream";
+  let bg = "bg-olive text-cream";
   let Icon = Flame;
 
   if (modality === "vert") {
