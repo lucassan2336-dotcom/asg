@@ -1,17 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import {
-  Flame,
-  Shield,
-  Trophy,
-  Sparkles,
-  ChevronRight,
-  Users,
-  Settings2,
-  Plus,
-} from "lucide-react";
+import { Flame, Shield, Trophy, Sparkles, ChevronRight, Users, Settings2 } from "lucide-react";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
-import { EditablePageToolbar } from "@/components/EditablePageToolbar";
 import { useSession, useMyRoles } from "@/lib/auth";
 import { usePageContent, type GenericPageContent } from "@/lib/cms";
 import { seo } from "@/lib/seo";
@@ -22,7 +12,7 @@ import {
   type SkateModality,
 } from "@/lib/ranking";
 import { ModalityBadge, RankingTrophyBadge, SkaterAvatar } from "@/components/TrophyBadges";
-import { ChampionshipPodiumModal, ScoringConfigModal } from "@/components/RankingModals";
+import { ScoringConfigModal } from "@/components/RankingModals";
 
 export const Route = createFileRoute("/ranking")({
   head: () =>
@@ -278,7 +268,6 @@ function RankingPage() {
   const { content } = usePageContent<GenericPageContent>("ranking");
 
   const [activeTab, setActiveTab] = useState<"street" | "vert" | "ambos">("ambos");
-  const [podiumModalOpen, setPodiumModalOpen] = useState(false);
   const [scoringModalOpen, setScoringModalOpen] = useState(false);
 
   const { data: streetRanking = [], isLoading: loadingStreet } = useModalityRanking("street");
@@ -289,14 +278,6 @@ function RankingPage() {
 
   return (
     <>
-      {/* Barra de Edição da Diretoria */}
-      <EditablePageToolbar
-        pageSlug="ranking"
-        pageName="Ranking Oficial"
-        addItemLabel="Lançar Pódio Oficial"
-        onAddItem={() => setPodiumModalOpen(true)}
-      />
-
       <PageHero
         eyebrow={hero?.eyebrow || "Circuito Competitivo A.S.G."}
         title={hero?.title || "Ranking Oficial"}
@@ -391,14 +372,6 @@ function RankingPage() {
                 >
                   <Settings2 className="h-3.5 w-3.5 text-rust" /> Regras de Pontuação
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPodiumModalOpen(true)}
-                  className="btn-stamp inline-flex items-center gap-1.5 text-xs py-1.5 px-3 bg-ink text-cream"
-                  title="Lançar novo pódio de campeonato e creditar pontos"
-                >
-                  <Plus className="h-3.5 w-3.5 text-amber" /> Lançar Pódio
-                </button>
               </div>
             )}
           </div>
@@ -417,11 +390,7 @@ function RankingPage() {
         )}
       </Section>
 
-      {/* Modais de Gestão da Diretoria */}
-      {podiumModalOpen && (
-        <ChampionshipPodiumModal initialPodium={null} onClose={() => setPodiumModalOpen(false)} />
-      )}
-
+      {/* Modal de Gestão da Diretoria */}
       {scoringModalOpen && <ScoringConfigModal onClose={() => setScoringModalOpen(false)} />}
     </>
   );
