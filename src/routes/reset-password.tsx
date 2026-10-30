@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
+import { getPasswordValidationError } from "@/lib/auth";
 import { seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/reset-password")({
@@ -34,6 +36,11 @@ function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      toast.error(passwordError);
+      return;
+    }
     if (password !== password2) {
       toast.error("As senhas não coincidem.");
       return;
@@ -72,18 +79,21 @@ function ResetPasswordPage() {
             <p className="py-6 text-center text-muted-foreground">Verificando link…</p>
           ) : (
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <label className="block">
-                <span className="eyebrow">Nova senha</span>
-                <input
-                  required
-                  type="password"
-                  minLength={6}
-                  maxLength={72}
-                  className="field mt-1"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
+              <div>
+                <label className="block">
+                  <span className="eyebrow">Nova senha</span>
+                  <input
+                    required
+                    type="password"
+                    minLength={6}
+                    maxLength={72}
+                    className="field mt-1"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+                <PasswordRequirements password={password} />
+              </div>
               <label className="block">
                 <span className="eyebrow">Repita a nova senha</span>
                 <input

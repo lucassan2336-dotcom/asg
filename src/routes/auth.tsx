@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { EditablePageToolbar } from "@/components/EditablePageToolbar";
-import { safeRedirect, useSession } from "@/lib/auth";
+import { PasswordRequirements } from "@/components/PasswordRequirements";
+import { getPasswordValidationError, safeRedirect, useSession } from "@/lib/auth";
 import { usePageContent, type AuthPageContent } from "@/lib/cms";
 import { seo } from "@/lib/seo";
 import type { AccountKind, SkateModality, SkateStance } from "@/lib/ranking";
@@ -71,6 +72,11 @@ function AuthPage() {
           toast.error("Informe uma idade válida entre 3 e 110 anos.");
           return;
         }
+      }
+      const passwordError = getPasswordValidationError(password);
+      if (passwordError) {
+        toast.error(passwordError);
+        return;
       }
     }
 
@@ -517,18 +523,21 @@ function AuthPage() {
                 </label>
 
                 {mode !== "recuperar" && (
-                  <label className="block">
-                    <span className="eyebrow">Senha</span>
-                    <input
-                      required
-                      type="password"
-                      minLength={6}
-                      maxLength={72}
-                      className="field mt-1"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </label>
+                  <div>
+                    <label className="block">
+                      <span className="eyebrow">Senha</span>
+                      <input
+                        required
+                        type="password"
+                        minLength={6}
+                        maxLength={72}
+                        className="field mt-1"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </label>
+                    {mode === "criar" && <PasswordRequirements password={password} />}
+                  </div>
                 )}
 
                 <button
