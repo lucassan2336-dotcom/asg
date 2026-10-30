@@ -39,29 +39,42 @@ export function Header() {
 
   return (
     <header className="site-header sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur transition-all">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
-        <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
-          <img src={logo.url} alt="Logo A.S.G." className="h-12 w-12 object-contain" />
-          <span className="font-display text-xl">A.S.G.</span>
+      <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-2.5">
+        {/* Logo alinhada à esquerda com espaçamento adequado */}
+        <Link
+          to="/"
+          className="flex items-center gap-2.5 shrink-0 pr-2 xl:pr-5"
+          onClick={() => setOpen(false)}
+        >
+          <img
+            src={logo.url}
+            alt="Logo A.S.G."
+            className="h-10 w-10 sm:h-11 sm:w-11 object-contain"
+          />
+          <span className="font-display text-xl tracking-tight whitespace-nowrap">A.S.G.</span>
         </Link>
-        <nav className="hidden items-center gap-1 lg:flex">
+
+        {/* Links de navegação desktop uniformes em uma única linha */}
+        <nav className="hidden items-center justify-center gap-1 xl:gap-2 2xl:gap-3 lg:flex flex-1 mx-2">
           {NAV.slice(1).map((n) => (
             <Link
               key={n.to}
               to={n.to}
-              className="rounded px-2 py-1 font-condensed text-sm font-semibold uppercase tracking-wide hover:bg-muted"
-              activeProps={{ className: "text-accent" }}
+              className="rounded px-2 py-1 xl:px-2.5 xl:py-1 font-condensed text-xs xl:text-sm font-bold uppercase tracking-wider whitespace-nowrap hover:bg-muted transition-colors"
+              activeProps={{ className: "text-accent bg-muted" }}
             >
               {n.label}
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+
+        {/* Botões de ação alinhados à direita */}
+        <div className="flex items-center gap-2 shrink-0">
           {!isInstalled && (
             <button
               type="button"
               onClick={triggerInstall}
-              className="btn-ghost-stamp hidden md:inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5"
+              className="btn-ghost-stamp hidden md:inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 whitespace-nowrap"
               title="Instalar aplicativo oficial da A.S.G."
             >
               <Download className="h-3.5 w-3.5 text-rust" /> App
@@ -70,23 +83,38 @@ export function Header() {
           {user ? (
             <>
               {roles.includes("diretoria") && (
-                <Link to="/diretoria" className="btn-ghost-stamp hidden sm:inline-flex">
+                <Link
+                  to="/diretoria"
+                  className="btn-ghost-stamp hidden sm:inline-flex text-xs px-3 py-1.5 whitespace-nowrap"
+                >
                   Diretoria
                 </Link>
               )}
-              <Link to="/area" className="btn-stamp hidden sm:inline-flex">
+              <Link
+                to="/area"
+                className="btn-stamp hidden sm:inline-flex text-xs px-3.5 py-1.5 whitespace-nowrap"
+              >
                 Minha área
               </Link>
-              <button onClick={handleSignOut} className="btn-ghost-stamp hidden sm:inline-flex">
+              <button
+                onClick={handleSignOut}
+                className="btn-ghost-stamp hidden sm:inline-flex text-xs px-3 py-1.5 whitespace-nowrap"
+              >
                 Sair
               </button>
             </>
           ) : (
             <>
-              <Link to="/auth" className="btn-ghost-stamp hidden sm:inline-flex">
+              <Link
+                to="/auth"
+                className="btn-ghost-stamp hidden sm:inline-flex text-xs px-3 py-1.5 whitespace-nowrap"
+              >
                 Entrar
               </Link>
-              <Link to="/associe-se" className="btn-stamp hidden sm:inline-flex">
+              <Link
+                to="/associe-se"
+                className="btn-stamp hidden sm:inline-flex text-xs px-3.5 py-1.5 whitespace-nowrap"
+              >
                 Associe-se
               </Link>
             </>
