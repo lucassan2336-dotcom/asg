@@ -16,6 +16,7 @@ export const NAV = [
   { to: "/resultados", label: "Resultados" },
   { to: "/ranking", label: "Ranking" },
   { to: "/galeria", label: "Galeria" },
+  { to: "/transparencia", label: "Transparência" },
   { to: "/apoiadores", label: "Apoiadores" },
   { to: "/contato", label: "Contato" },
 ] as const;
@@ -37,7 +38,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur">
+    <header className="site-header sticky top-0 z-40 border-b-2 border-ink bg-cream/95 backdrop-blur transition-all">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2">
         <Link to="/" className="flex items-center gap-3" onClick={() => setOpen(false)}>
           <img src={logo.url} alt="Logo A.S.G." className="h-12 w-12 object-contain" />
@@ -90,8 +91,12 @@ export function Header() {
               </Link>
             </>
           )}
-          <button aria-label="Menu" className="lg:hidden p-2" onClick={() => setOpen(!open)}>
-            {open ? <X /> : <Menu />}
+          <button
+            aria-label="Abrir Menu"
+            className="lg:hidden flex items-center justify-center rounded-sm border-2 border-ink bg-card p-2 text-ink shadow-stamp-sm hover:bg-muted active:translate-y-0.5 transition-all"
+            onClick={() => setOpen(!open)}
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </div>

@@ -165,3 +165,17 @@
     outline-offset: 2px;
   }
 }
+
+/* Suporte a Safe Area para PWA e entalhes de tela (Notch / Dynamic Island / Barra de status) */
+.site-header {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+  padding-left: max(env(safe-area-inset-left, 0px), 0px);
+  padding-right: max(env(safe-area-inset-right, 0px), 0px);
+}
+
+@media all and (display-mode: standalone) {
+  .site-header {
+    /* No PWA instalado, adiciona espaçamento superior seguro para o menu e a logo nunca ficarem cortados */
+    padding-top: max(env(safe-area-inset-top, 0px), 16px);
+  }
+}

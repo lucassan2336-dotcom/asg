@@ -23,6 +23,7 @@ import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ResultadosRouteImport } from './routes/resultados'
 import { Route as SobreRouteImport } from './routes/sobre'
+import { Route as TransparenciaRouteImport } from './routes/transparencia'
 import { Route as AuthenticatedAreaRouteImport } from './routes/_authenticated/area'
 import { Route as AuthenticatedDiretoriaRouteImport } from './routes/_authenticated/diretoria'
 import { Route as SkatistasSkaterIdRouteImport } from './routes/skatistas.$skaterId'
@@ -96,6 +97,11 @@ const SobreRoute = SobreRouteImport.update({
   path: '/sobre',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransparenciaRoute = TransparenciaRouteImport.update({
+  id: '/transparencia',
+  path: '/transparencia',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAreaRoute = AuthenticatedAreaRouteImport.update({
   id: '/area',
   path: '/area',
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/transparencia': typeof TransparenciaRoute
   '/area': typeof AuthenticatedAreaRoute
   '/diretoria': typeof AuthenticatedDiretoriaRoute
   '/skatistas/$skaterId': typeof SkatistasSkaterIdRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/transparencia': typeof TransparenciaRoute
   '/area': typeof AuthenticatedAreaRoute
   '/diretoria': typeof AuthenticatedDiretoriaRoute
   '/skatistas/$skaterId': typeof SkatistasSkaterIdRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/resultados': typeof ResultadosRoute
   '/sobre': typeof SobreRoute
+  '/transparencia': typeof TransparenciaRoute
   '/_authenticated/area': typeof AuthenticatedAreaRoute
   '/_authenticated/diretoria': typeof AuthenticatedDiretoriaRoute
   '/skatistas/$skaterId': typeof SkatistasSkaterIdRoute
@@ -184,6 +193,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/resultados'
     | '/sobre'
+    | '/transparencia'
     | '/area'
     | '/diretoria'
     | '/skatistas/$skaterId'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/resultados'
     | '/sobre'
+    | '/transparencia'
     | '/area'
     | '/diretoria'
     | '/skatistas/$skaterId'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/resultados'
     | '/sobre'
+    | '/transparencia'
     | '/_authenticated/area'
     | '/_authenticated/diretoria'
     | '/skatistas/$skaterId'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ResultadosRoute: typeof ResultadosRoute
   SobreRoute: typeof SobreRoute
+  TransparenciaRoute: typeof TransparenciaRoute
   SkatistasSkaterIdRoute: typeof SkatistasSkaterIdRoute
 }
 
@@ -344,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SobreRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transparencia': {
+      id: '/transparencia'
+      path: '/transparencia'
+      fullPath: '/transparencia'
+      preLoaderRoute: typeof TransparenciaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/area': {
       id: '/_authenticated/area'
       path: '/area'
@@ -396,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ResultadosRoute: ResultadosRoute,
   SobreRoute: SobreRoute,
+  TransparenciaRoute: TransparenciaRoute,
   SkatistasSkaterIdRoute: SkatistasSkaterIdRoute,
 }
 export const routeTree = rootRouteImport
