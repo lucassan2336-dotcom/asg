@@ -1,0 +1,72 @@
+{
+  "id": "/",
+  "name": "A.S.G. — Associação dos Skatistas de Guararema",
+  "short_name": "A.S.G. Skate",
+  "description": "Aplicativo oficial da Associação dos Skatistas de Guararema: ranking street & vert, eventos, álbuns de fotos, projetos sociais e área do skatista e associado.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f5efe1",
+  "theme_color": "#1a1714",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["sports", "social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ranking Oficial",
+      "short_name": "Ranking",
+      "description": "Classificação Street e Vert dos skatistas de Guararema",
+      "url": "/ranking",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Álbuns de Fotos",
+      "short_name": "Galeria",
+      "description": "Álbuns de fotos das sessões e campeonatos da A.S.G.",
+      "url": "/galeria",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Eventos e Campeonatos",
+      "short_name": "Eventos",
+      "description": "Agenda oficial de eventos e sessões da A.S.G.",
+      "url": "/eventos",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Meu Perfil",
+      "short_name": "Perfil",
+      "description": "Acesse sua carteira de skatista ou área de associado",
+      "url": "/area",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

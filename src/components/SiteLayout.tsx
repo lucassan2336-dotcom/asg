@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { Menu, X, Star } from "lucide-react";
+import { Menu, X, Star, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyRoles, useSession } from "@/lib/auth";
+import { usePwaInstall, PwaInstallModal } from "@/components/PwaManager";
 import logo from "@/assets/logo-asg-nova.png.asset.json";
 
 export const NAV = [
@@ -25,6 +26,7 @@ export function Header() {
   const { roles } = useMyRoles(user?.id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { isInstalled, isIos, showIosGuide, setShowIosGuide, triggerInstall } = usePwaInstall();
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
@@ -54,6 +56,16 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={triggerInstall}
+              className="btn-ghost-stamp hidden md:inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5"
+              title="Instalar aplicativo oficial da A.S.G."
+            >
+              <Download className="h-3.5 w-3.5 text-rust" /> App
+            </button>
+          )}
           {user ? (
             <>
               {roles.includes("diretoria") && (
@@ -98,6 +110,18 @@ export function Header() {
             </Link>
           ))}
           <div className="space-y-2 p-4">
+            {!isInstalled && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  void triggerInstall();
+                }}
+                className="btn-ghost-stamp w-full justify-center inline-flex items-center gap-2"
+              >
+                <Download className="h-4 w-4 text-rust" /> Instalar App A.S.G.
+              </button>
+            )}
             {user ? (
               <>
                 {roles.includes("diretoria") && (
@@ -141,6 +165,7 @@ export function Header() {
           </div>
         </nav>
       )}
+      <PwaInstallModal open={showIosGuide} onClose={() => setShowIosGuide(false)} isIos={isIos} />
     </header>
   );
 }
