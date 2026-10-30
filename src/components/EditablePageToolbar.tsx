@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Edit3, Plus, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { useSession, useMyRoles } from "@/lib/auth";
-import { usePageContent, useSavePageContent } from "@/lib/cms";
+import { usePageContent, useSavePageContent, DEFAULT_PAGE_CONTENTS } from "@/lib/cms";
 
 interface EditablePageToolbarProps {
   pageSlug: string;
@@ -84,13 +84,38 @@ export function EditPageModal({
 }) {
   const { content } = usePageContent<any>(pageSlug);
   const saveMutation = useSavePageContent();
-  const [formData, setFormData] = useState<any>(() => JSON.parse(JSON.stringify(content)));
+
+  const getInitialData = () => {
+    const fallback = DEFAULT_PAGE_CONTENTS[pageSlug] || {
+      hero: { eyebrow: "", title: pageName, description: "" },
+    };
+    if (content && typeof content === "object") {
+      try {
+        return JSON.parse(JSON.stringify(content));
+      } catch {
+        return { hero: {} };
+      }
+    }
+    return JSON.parse(JSON.stringify(fallback));
+  };
+
+  const [formData, setFormData] = useState<any>(getInitialData);
+
+  useEffect(() => {
+    if (content && typeof content === "object") {
+      try {
+        setFormData(JSON.parse(JSON.stringify(content)));
+      } catch {
+        // mantém dados atuais
+      }
+    }
+  }, [content]);
 
   const handleHeroChange = (field: string, val: string) => {
     setFormData((prev: any) => ({
-      ...prev,
+      ...(prev || {}),
       hero: {
-        ...(prev.hero || {}),
+        ...(prev?.hero || {}),
         [field]: val,
       },
     }));
@@ -102,12 +127,12 @@ export function EditPageModal({
       await saveMutation.mutateAsync({
         pageSlug,
         sectionKey: "main",
-        content: formData,
+        content: formData || { hero: {} },
       });
       toast.success(`Textos de "${pageName}" salvos com sucesso!`);
       onClose();
-    } catch {
-      toast.error("Erro ao salvar textos.");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar textos.");
     }
   };
 

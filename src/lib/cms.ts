@@ -319,6 +319,24 @@ export const DEFAULT_PAGE_CONTENTS: Record<string, any> = {
     associateCardDescription:
       "Perfil associativo exclusivo para membros e apoiadores da A.S.G. Não inclui no ranking competitivo.",
   },
+
+  ranking: {
+    hero: {
+      eyebrow: "Circuito Competitivo A.S.G.",
+      title: "Ranking Oficial",
+      description:
+        "Classificação oficial e independente das categorias Street e Vert da Associação dos Skatistas de Guararema. Clique em qualquer skatista para abrir seu perfil público completo.",
+    },
+  },
+
+  transparencia: {
+    hero: {
+      eyebrow: "Prestação de Contas",
+      title: "Portal de Transparência",
+      description:
+        "Acompanhe em tempo real todas as finanças da A.S.G.: o que entra, o que sai e os comprovantes oficiais de cada movimentação.",
+    },
+  },
 };
 
 // ==========================================
