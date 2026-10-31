@@ -1,9 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Calendar, MapPin, Edit3, CheckCircle2 } from "lucide-react";
+import { Calendar, MapPin, Edit3, CheckCircle2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
 import { seo } from "@/lib/seo";
-import { usePageContent, useSiteEvents, type GenericPageContent, type EventItem } from "@/lib/cms";
+import {
+  usePageContent,
+  useSiteEvents,
+  useDeleteSiteEvent,
+  type GenericPageContent,
+  type EventItem,
+} from "@/lib/cms";
 import { useSession, useMyRoles } from "@/lib/auth";
 import { EditablePageToolbar } from "@/components/EditablePageToolbar";
 import { EventModal } from "@/components/CmsModals";
@@ -24,6 +31,7 @@ function EventosPage() {
 
   const { content } = usePageContent<GenericPageContent>("eventos");
   const { data: events, isLoading } = useSiteEvents();
+  const deleteMutation = useDeleteSiteEvent();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventItem | null>(null);
@@ -39,6 +47,17 @@ function EventosPage() {
   const handleEditEvent = (item: EventItem) => {
     setSelectedEvent(item);
     setModalOpen(true);
+  };
+
+  const handleDeleteEvent = async (item: EventItem) => {
+    if (confirm(`Deseja realmente excluir o evento "${item.title}"?`)) {
+      try {
+        await deleteMutation.mutateAsync(item.id);
+        toast.success("Evento excluído com sucesso.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Não foi possível excluir o evento.");
+      }
+    }
   };
 
   return (
@@ -58,8 +77,22 @@ function EventosPage() {
         {isLoading ? (
           <p className="text-muted-foreground">Carregando eventos…</p>
         ) : list.length === 0 ? (
-          <Card className="text-center py-10 text-muted-foreground">
-            Nenhum evento agendado no momento.
+          <Card className="text-center py-12 space-y-3">
+            <Calendar className="mx-auto h-10 w-10 text-muted-foreground/60" />
+            <h3 className="text-xl font-display uppercase tracking-wide">Sem eventos no momento</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Fique atento aos nossos canais e redes sociais. Novas sessões e campeonatos serão
+              publicados em breve!
+            </p>
+            {isDiretoria && (
+              <button
+                type="button"
+                onClick={handleNewEvent}
+                className="btn-stamp text-xs inline-flex mt-2"
+              >
+                Novo Evento
+              </button>
+            )}
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
@@ -93,11 +126,20 @@ function EventosPage() {
                             </span>
                           )}
                           <button
+                            type="button"
                             onClick={() => handleEditEvent(ev)}
                             className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs font-semibold hover:bg-accent hover:text-accent-foreground"
                             title="Editar evento"
                           >
                             <Edit3 className="h-3 w-3" /> Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEvent(ev)}
+                            className="flex items-center gap-1 rounded bg-destructive/10 text-destructive px-2 py-0.5 text-xs font-semibold hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                            title="Excluir evento"
+                          >
+                            <Trash2 className="h-3 w-3" /> Excluir
                           </button>
                         </div>
                       )}

@@ -493,27 +493,7 @@ export const DEFAULT_NEWS: NewsArticleItem[] = [
   },
 ];
 
-export const DEFAULT_EVENTS: EventItem[] = [
-  {
-    id: "event-1",
-    title: "Sessão Aberta e Best Trick da A.S.G.",
-    description:
-      "Encontro aberto para todos os skatistas com premiação para as melhores manobras no caixote grande.",
-    location: "Pista Pública de Skate de Guararema",
-    starts_at: "2026-11-15T14:00:00Z",
-    registration_open: true,
-    published: true,
-  },
-  {
-    id: "event-2",
-    title: "Campeonato Amador de Skate Street",
-    description: "Competição oficial valendo pontos para o ranking local da associação.",
-    location: "Complexo Esportivo Municipal",
-    starts_at: "2026-12-05T09:00:00Z",
-    registration_open: true,
-    published: true,
-  },
-];
+export const DEFAULT_EVENTS: EventItem[] = [];
 
 export const DEFAULT_SPONSORS: SponsorItem[] = [
   {
@@ -1704,13 +1684,17 @@ export function useSiteEvents() {
           .select("id, title, description, location, starts_at, registration_open, published")
           .order("starts_at", { ascending: true });
 
-        if (error || !data || data.length === 0) {
-          return DEFAULT_EVENTS;
+        if (!error && data) {
+          setLocalItem("events", data);
+          return data as EventItem[];
         }
-        setLocalItem("events", data);
-        return data as EventItem[];
+        if (error) {
+          console.warn("Aviso ao carregar eventos do Supabase:", error.message);
+          return getLocalItem<EventItem[]>("events", []);
+        }
+        return [];
       } catch {
-        return DEFAULT_EVENTS;
+        return getLocalItem<EventItem[]>("events", []);
       }
     },
   });
@@ -1722,7 +1706,7 @@ export function useSaveSiteEvent() {
   return useMutation({
     mutationFn: async (event: Partial<EventItem> & { title: string; description: string }) => {
       await assertDiretoriaAccess();
-      const current = getLocalItem<EventItem[]>("events", DEFAULT_EVENTS);
+      const current = getLocalItem<EventItem[]>("events", []);
       const payload = {
         title: event.title.trim(),
         description: event.description.trim(),
@@ -1767,10 +1751,10 @@ export function useDeleteSiteEvent() {
       if (!id.startsWith("event-")) {
         const { error } = await supabase.from("events").delete().eq("id", id);
         if (error) {
-          throw new Error("Não foi possível excluir o evento.");
+          throw new Error("Não foi possível excluir o evento no banco de dados.");
         }
       }
-      const current = getLocalItem<EventItem[]>("events", DEFAULT_EVENTS);
+      const current = getLocalItem<EventItem[]>("events", []);
       setLocalItem(
         "events",
         current.filter((e) => e.id !== id),

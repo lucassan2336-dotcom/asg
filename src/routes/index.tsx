@@ -136,7 +136,7 @@ function Index() {
             })
           ) : (
             <Card className="col-span-2 text-center text-muted-foreground py-8">
-              Nenhum evento agendado no momento. Acompanhe a nossa agenda!
+              Sem eventos no momento. Acompanhe a nossa agenda!
             </Card>
           )}
         </div>
