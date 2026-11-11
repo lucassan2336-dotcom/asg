@@ -20,12 +20,13 @@ export default defineConfig({
   },
   vite: {
     resolve: {
-      alias: {
-        // React Email's htmlparser2 needs entities v4.5.0; bypass nested v7 copies.
-        "entities/lib/decode.js": path.resolve(process.cwd(), "node_modules/entities/lib/decode.js"),
-        "entities/lib/encode.js": path.resolve(process.cwd(), "node_modules/entities/lib/encode.js"),
-        entities: path.resolve(process.cwd(), "node_modules/entities"),
-      },
+      // Exact-match only: React Email needs entities v4.5.0 for these paths, while
+      // htmlparser2 v10 imports "entities/decode" from its own nested v7 copy.
+      alias: [
+        { find: /^entities\/lib\/decode\.js$/, replacement: path.resolve(process.cwd(), "node_modules/entities/lib/decode.js") },
+        { find: /^entities\/lib\/encode\.js$/, replacement: path.resolve(process.cwd(), "node_modules/entities/lib/encode.js") },
+        { find: /^entities$/, replacement: path.resolve(process.cwd(), "node_modules/entities") },
+      ],
     },
   },
 });
