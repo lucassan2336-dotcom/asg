@@ -17,3 +17,5 @@
 - [ ] Completar validação, privacidade das observações e controle de duplicidade da associação
 - [ ] Tabela da diretoria com detalhes, confirmação e reanálise justificada
 - [ ] Testar os três perfis sem aprovações persistentes nem envio de e-mails
+- [ ] Remover marca d'água "Edit with Lovable" do site publicado
+- [ ] Configurar infraestrutura de e-mail para assgma.app
