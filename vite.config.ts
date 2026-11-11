@@ -10,7 +10,7 @@ import path from "node:path";
 
 // Load server-only env vars (e.g. LOVABLE_API_KEY) into process.env for the
 // email server routes. Client code still only receives VITE_* vars.
-Object.assign(process.env, loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), ""));
+Object.assign(process.env, loadEnv(process.env["NODE_ENV"] ?? "development", process.cwd(), ""));
 
 export default defineConfig({
   tanstackStart: {
