@@ -1128,7 +1128,9 @@ export function useSaveGalleryAlbum() {
         cover_url:
           cleanCover ?? (existingIdx >= 0 ? (remoteAlbums[existingIdx]!.cover_url ?? null) : null),
         created_at:
-          existingIdx >= 0 ? remoteAlbums[existingIdx]!.created_at : new Date().toISOString(),
+          existingIdx >= 0
+            ? (remoteAlbums[existingIdx]!.created_at ?? new Date().toISOString())
+            : new Date().toISOString(),
       };
 
       const nextAlbums =
