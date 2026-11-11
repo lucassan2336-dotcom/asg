@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Body, Container, Head, Html, Preview, Section, Text } from '@react-email/components'
+import { Body, Container, Head, Html, Img, Preview, Section, Text } from '@react-email/components'
 
 export const SITE_NAME = 'A.S.G. — Skatistas de Guararema'
 
@@ -24,6 +24,7 @@ export function EmailShell({
       <Body style={main}>
         <Container style={container}>
           <Section style={header}>
+            <Img src="https://assgma.app/logo-asg.png" width="96" height="96" alt="A.S.G." style={logoImg} />
             <Text style={logo}>A.S.G.</Text>
             <Text style={tagline}>Associação dos Skatistas de Guararema</Text>
           </Section>
@@ -45,6 +46,8 @@ const container = {
   borderRadius: '8px',
   overflow: 'hidden' as const,
 }
+const logoImg = { display: 'block', margin: '0 auto 8px', borderRadius: '50%' }
+
 const header = {
   backgroundColor: colors.cream,
   borderBottom: `2px solid ${colors.ink}`,
