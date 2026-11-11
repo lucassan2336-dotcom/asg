@@ -19,3 +19,4 @@
 - [ ] Testar os três perfis sem aprovações persistentes nem envio de e-mails
 - [x] Remover marca d'água "Edit with Lovable" do site publicado
 - [x] Configurar infraestrutura de e-mail para assgma.app (modelos em pt-BR com a identidade da A.S.G.; envio ativa após verificação de DNS)
+- [x] Logo recortada só no círculo, com fundo transparente (site, aba do navegador, ícones do app)

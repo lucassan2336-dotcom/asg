@@ -1,4 +1,4 @@
-const CACHE_NAME = "asg-pwa-v3";
+const CACHE_NAME = "asg-pwa-v4";
 const PRECACHE_ASSETS = [
   "/",
   "/offline.html",
