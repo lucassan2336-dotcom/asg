@@ -69,7 +69,7 @@ function AreaPage() {
   const accountType: AccountKind =
     baseProfile?.account_type === "skatista" || skaterProfile?.is_active
       ? "skatista"
-      : (user?.user_metadata?.account_type as AccountKind) === "skatista"
+      : (user?.user_metadata?.["account_type"] as AccountKind) === "skatista"
         ? "skatista"
         : "associado";
 
@@ -149,7 +149,7 @@ function AreaPage() {
       skaterProfile?.avatar_url ||
       associateProfile?.avatar_url ||
       baseProfile?.avatar_url ||
-      (user?.user_metadata?.avatar_url as string | undefined) ||
+      (user?.user_metadata?.["avatar_url"] as string | undefined) ||
       (userId && typeof window !== "undefined"
         ? localStorage.getItem(`asg_user_avatar_${userId}`)
         : null) ||
@@ -196,7 +196,7 @@ function AreaPage() {
       const uploadedUrl = await uploadProfileAvatar(userId, file);
       setAvatarUrl(uploadedUrl);
 
-      const rawMod = user?.user_metadata?.modality;
+      const rawMod = user?.user_metadata?.["modality"];
       const resolvedModality: SkateModality =
         skaterProfile?.modality ||
         (rawMod === "vert" || rawMod === "versatil" || rawMod === "escolher_depois"
