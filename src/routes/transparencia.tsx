@@ -632,7 +632,7 @@ function TransparenciaDialog({ open, onClose, initialData, onSaved }: DialogProp
         setRemoveExistingAttachment(false);
         const first =
           initialData.attachments && initialData.attachments.length > 0
-            ? initialData.attachments[0]
+            ? (initialData.attachments[0] ?? null)
             : null;
         setExistingAttachment(first);
       } else {

@@ -59,7 +59,7 @@ export async function updateUserRole(
     _target_user_id: targetUserId,
     _role: role,
     _grant: grant,
-    _notes: notes || undefined,
+    ...(notes ? { _notes: notes } : {}),
   });
 
   if (!rpcError) return;

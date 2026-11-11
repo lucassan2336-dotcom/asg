@@ -41,6 +41,7 @@ beforeAll(async () => {
     "0005_financial_management_expansion",
     "0006_site_pages_editable_by_diretoria",
     "0007_security_and_integrity_hardening",
+    "0011_reversal_inherits_original_dates",
   ]) {
     await db.exec(readFileSync(`drizzle/migrations/${file}.sql`, "utf8"));
   }

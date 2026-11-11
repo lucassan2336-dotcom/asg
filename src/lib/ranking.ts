@@ -667,7 +667,7 @@ export function useMyAccountProfiles(userId?: string) {
         supabase.auth.getUser(),
       ]);
 
-      const metaAvatar = (authData?.user?.user_metadata?.avatar_url as string | undefined) || null;
+      const metaAvatar = (authData?.user?.user_metadata?.["avatar_url"] as string | undefined) || null;
       const localAvatar =
         typeof window !== "undefined" ? localStorage.getItem(`asg_user_avatar_${userId}`) : null;
 

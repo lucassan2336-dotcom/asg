@@ -101,7 +101,7 @@ export function ChampionshipPodiumModal({
 
     try {
       await saveMutation.mutateAsync({
-        id: initialPodium?.id,
+        ...(initialPodium?.id ? { id: initialPodium.id } : {}),
         championship_name: championshipName,
         event_date: eventDate,
         modality,
