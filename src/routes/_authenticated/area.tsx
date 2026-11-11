@@ -211,7 +211,7 @@ function AreaPage() {
           skaterProfile?.full_name ||
           associateProfile?.full_name ||
           baseProfile?.full_name ||
-          (user?.user_metadata?.full_name as string | undefined) ||
+          (user?.user_metadata?.["full_name"] as string | undefined) ||
           user?.email?.split("@")[0] ||
           "Membro A.S.G.",
         accountType,
@@ -277,7 +277,7 @@ function AreaPage() {
           .eq("user_id", userId);
         if (error) throw error;
       } else {
-        const rawMod = user?.user_metadata?.modality;
+        const rawMod = user?.user_metadata?.["modality"];
         const initialModality =
           rawMod === "vert" || rawMod === "versatil" || rawMod === "escolher_depois"
             ? rawMod
@@ -424,7 +424,7 @@ function AreaPage() {
                       name={fullName || "Skatista"}
                       avatarUrl={avatarUrl}
                       size="xl"
-                      trophyTier={publicSkaterData?.skater.trophy_tier}
+                      trophyTier={publicSkaterData?.skater.trophy_tier ?? null}
                     />
                     <button
                       type="button"

@@ -301,7 +301,7 @@ function ResultadosPage() {
                       >
                         <SkaterAvatar
                           name={skater?.full_name ?? `${placement}º Colocado`}
-                          avatarUrl={skater?.avatar_url}
+                          avatarUrl={skater?.avatar_url ?? null}
                           size="lg"
                         />
                         <div className="min-w-0 flex-1">

@@ -92,7 +92,7 @@ function EditPixModal({
       };
 
       await savePage.mutateAsync({
-        slug: "contato",
+        pageSlug: "contato",
         content: updatedContent,
       });
 

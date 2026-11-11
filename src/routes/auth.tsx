@@ -93,7 +93,10 @@ function AuthPage() {
         const parsedAge = age.trim() ? Number(age) : null;
         const selectedModality: SkateModality =
           accountType === "skatista" &&
-          ["street", "vert", "versatil", "escolher_depois"].includes(modality)
+          (modality === "street" ||
+            modality === "vert" ||
+            modality === "versatil" ||
+            modality === "escolher_depois")
             ? modality
             : "street";
 
