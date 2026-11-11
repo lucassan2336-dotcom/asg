@@ -78,6 +78,13 @@
       "when": 1793197669254,
       "tag": "0010_apply_member_and_role_management",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794361154525,
+      "tag": "0011_reversal_inherits_original_dates",
+      "breakpoints": true
     }
   ]
 }
