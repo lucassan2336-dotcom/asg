@@ -794,7 +794,7 @@ export function useScoringConfig() {
     queryFn: async (): Promise<ScoringConfigRow> => {
       const { data, error } = await (supabase as any)
         .from("ranking_scoring_config")
-        .select("*")
+        .select("id, first_place_points, second_place_points, third_place_points, tiebreaker_rule, updated_at")
         .eq("id", 1)
         .maybeSingle();
 
