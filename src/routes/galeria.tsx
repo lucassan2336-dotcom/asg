@@ -377,6 +377,12 @@ function GaleriaPage() {
     ? albumsSummary.find((a) => a.albumName === selectedEvent) || null
     : null;
 
+  function isPhotoAlbumCover(photo: GalleryPhotoItem): boolean {
+    const albumKey = getPhotoAlbumName(photo);
+    const sameAlbumPhotos = rawList.filter((p) => getPhotoAlbumName(p) === albumKey);
+    return isAlbumCoverPhoto(photo, sameAlbumPhotos);
+  }
+
   // Fotos do álbum atualmente aberto: capa primeiro, depois mais recentes para cima
   const filteredList = selectedEvent
     ? rawList
@@ -394,12 +400,6 @@ function GaleriaPage() {
           return (a.sort_order ?? 0) - (b.sort_order ?? 0);
         })
     : [];
-
-  const isPhotoAlbumCover = (photo: GalleryPhotoItem): boolean => {
-    const albumKey = getPhotoAlbumName(photo);
-    const sameAlbumPhotos = rawList.filter((p) => getPhotoAlbumName(p) === albumKey);
-    return isAlbumCoverPhoto(photo, sameAlbumPhotos);
-  };
 
   const handleSetCover = async (photo: GalleryPhotoItem) => {
     try {
