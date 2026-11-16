@@ -23,6 +23,8 @@ export default defineConfig({
       // Exact-match only: React Email needs entities v4.5.0 for these paths, while
       // htmlparser2 v10 imports "entities/decode" from its own nested v7 copy.
       alias: [
+        { find: /^entities\/decode$/, replacement: path.resolve(process.cwd(), "node_modules/htmlparser2/node_modules/entities/dist/esm/decode.js") },
+        { find: /^entities\/escape$/, replacement: path.resolve(process.cwd(), "node_modules/htmlparser2/node_modules/entities/dist/esm/escape.js") },
         { find: /^entities\/lib\/decode\.js$/, replacement: path.resolve(process.cwd(), "node_modules/entities/lib/decode.js") },
         { find: /^entities\/lib\/encode\.js$/, replacement: path.resolve(process.cwd(), "node_modules/entities/lib/encode.js") },
         { find: /^entities$/, replacement: path.resolve(process.cwd(), "node_modules/entities") },
