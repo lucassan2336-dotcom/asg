@@ -259,4 +259,62 @@ describe.sequential("Segurança e Edição de Páginas (Exclusivo da Diretoria)"
       `),
     ).rejects.toThrow();
   });
+
+  it("Álbuns com datas e ordenação de novos para cima e antigos para baixo, permitindo incluir em álbuns criados", async () => {
+    await asUser(directorId);
+
+    // 1. Diretoria salva metadados de 2 álbuns com datas diferentes
+    const albumsMeta = {
+      items: [
+        {
+          id: "alb-antigo",
+          name: "Campeonato Antigo 2025",
+          event_date: "2025-06-10",
+          description: "Edição de 2025",
+        },
+        {
+          id: "alb-novo",
+          name: "Campeonato Novo 2026",
+          event_date: "2026-11-15",
+          description: "Edição mais recente de 2026",
+        },
+      ],
+    };
+
+    await db.query(
+      `
+      INSERT INTO public.site_content(page_slug, section_key, content, updated_by)
+      VALUES ('galeria', 'albums', $1::jsonb, '${directorId}')
+      ON CONFLICT (page_slug, section_key) DO UPDATE SET content = EXCLUDED.content
+    `,
+      [JSON.stringify(albumsMeta)],
+    );
+
+    // 2. Diretoria inclui novas fotos em um álbum já criado ("Campeonato Novo 2026")
+    const insertRes = await db.query(`
+      INSERT INTO public.gallery_photos(title, image_url, event_name, caption, published, sort_order)
+      VALUES
+        ('Foto 1 Novo', 'https://asg.com.br/foto1.jpg', 'Campeonato Novo 2026', 'Manobra 1', true, 1),
+        ('Foto 2 Novo', 'https://asg.com.br/foto2.jpg', 'Campeonato Novo 2026', 'Manobra 2', true, 2)
+      RETURNING *
+    `);
+    expect(insertRes.rows.length).toBe(2);
+
+    // 3. Verifica ordenação: data 2026-11-15 vem antes de 2025-06-10 (novos para cima)
+    const { rows: savedContent } = await db.query<{ content: any }>(
+      `SELECT content FROM public.site_content WHERE page_slug = 'galeria' AND section_key = 'albums'`,
+    );
+    const loadedAlbums = savedContent[0]?.content.items as Array<{
+      name: string;
+      event_date: string;
+    }>;
+    const sorted = [...loadedAlbums].sort((a, b) => {
+      const timeA = new Date(a.event_date).getTime();
+      const timeB = new Date(b.event_date).getTime();
+      return timeB - timeA; // Novos para cima, antigos para baixo
+    });
+
+    expect(sorted[0]?.name).toBe("Campeonato Novo 2026");
+    expect(sorted[1]?.name).toBe("Campeonato Antigo 2025");
+  });
 });

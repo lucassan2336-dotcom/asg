@@ -122,6 +122,7 @@ export interface GalleryAlbumItem {
   name: string;
   description?: string | null;
   cover_url?: string | null;
+  event_date?: string | null;
   created_at?: string;
 }
 
@@ -1081,6 +1082,7 @@ export function useSaveGalleryAlbum() {
       name: string;
       description?: string | null;
       coverUrl?: string | null;
+      eventDate?: string | null;
       initialPhotos?: Array<{
         title: string;
         image_url: string;
@@ -1096,6 +1098,7 @@ export function useSaveGalleryAlbum() {
 
       const cleanDesc = params.description?.trim().slice(0, 400) || null;
       const cleanCover = params.coverUrl ? safeImageUrl(params.coverUrl) || null : null;
+      const cleanEventDate = params.eventDate ? params.eventDate.trim().slice(0, 10) : null;
 
       // 1. Ler álbuns existentes em site_content
       const currentAlbums = getLocalItem<GalleryAlbumItem[]>("gallery_albums", []);
@@ -1127,6 +1130,13 @@ export function useSaveGalleryAlbum() {
         description: cleanDesc,
         cover_url:
           cleanCover ?? (existingIdx >= 0 ? (remoteAlbums[existingIdx]!.cover_url ?? null) : null),
+        event_date:
+          cleanEventDate ??
+          (existingIdx >= 0
+            ? (remoteAlbums[existingIdx]!.event_date ??
+              remoteAlbums[existingIdx]!.created_at?.slice(0, 10) ??
+              null)
+            : new Date().toISOString().slice(0, 10)),
         created_at:
           existingIdx >= 0
             ? (remoteAlbums[existingIdx]!.created_at ?? new Date().toISOString())
@@ -1389,7 +1399,10 @@ export function useSaveGalleryPhoto() {
       setLocalItem("gallery", updated);
       return itemToSave;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-photos"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-albums-meta"] });
+    },
   });
 }
 
@@ -1458,7 +1471,10 @@ export function useSaveMultipleGalleryPhotos() {
       setLocalItem("gallery", [...current, ...savedItems]);
       return savedItems;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery-photos"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["gallery-photos"] });
+      queryClient.invalidateQueries({ queryKey: ["gallery-albums-meta"] });
+    },
   });
 }
 

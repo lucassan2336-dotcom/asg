@@ -146,6 +146,11 @@ describe.sequential("Módulo de Gestão Financeira da A.S.G.", () => {
 
     expect(reversalId).toBeTruthy();
 
+    // Sincroniza a data do estorno para o período de teste (outubro de 2026) independente da data do sistema
+    await db.exec(
+      `UPDATE public.financial_transactions SET occurred_on = '2026-10-18', settlement_date = '2026-10-18' WHERE id = '${reversalId}'`,
+    );
+
     // Verifica que o estorno foi gerado como despesa paga de R$ 30,00
     const revRow = (
       await db.query<{

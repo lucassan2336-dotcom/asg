@@ -13,6 +13,7 @@ import {
   FolderOpen,
   FolderPlus,
   ArrowLeft,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHero, Section, Card } from "@/components/SiteLayout";
@@ -194,9 +195,21 @@ function AlbumViewerModal({
       <div className="border-t border-cream/15 bg-black/60 px-4 py-3 space-y-3">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:items-end justify-between gap-2">
           <div>
-            <h3 className="font-display text-xl sm:text-2xl uppercase tracking-wider text-cream">
-              {currentPhoto.title}
-            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-display text-xl sm:text-2xl uppercase tracking-wider text-cream">
+                {currentPhoto.title}
+              </h3>
+              {currentPhoto.created_at && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-condensed uppercase tracking-wider text-cream/70">
+                  <Calendar className="h-3 w-3 text-amber" />
+                  {new Date(currentPhoto.created_at).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+            </div>
             {currentPhoto.caption && (
               <p className="mt-1 text-xs sm:text-sm text-cream/70 max-w-2xl leading-relaxed">
                 {currentPhoto.caption}
@@ -241,6 +254,57 @@ function getPhotoAlbumName(photo: GalleryPhotoItem): string {
   return photo.event_name?.trim() || DEFAULT_ALBUM_FALLBACK;
 }
 
+function getAlbumEffectiveTimestamp(
+  albumMeta?: GalleryAlbumItem | null,
+  photos: GalleryPhotoItem[] = [],
+): number {
+  if (albumMeta?.event_date) {
+    const parsed = new Date(albumMeta.event_date + "T12:00:00Z").getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  if (albumMeta?.created_at) {
+    const parsed = new Date(albumMeta.created_at).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  for (const p of photos) {
+    if (p.created_at) {
+      const parsed = new Date(p.created_at).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+  return 0;
+}
+
+function formatAlbumDisplayDate(
+  eventDate?: string | null,
+  createdAt?: string | null,
+): string | null {
+  const dateStr = eventDate || (createdAt ? createdAt.slice(0, 10) : null);
+  if (!dateStr) return null;
+  try {
+    const clean = dateStr.split("T")[0]!;
+    const parts = clean.split("-").map(Number);
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      return d.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime())
+      ? null
+      : d.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+  } catch {
+    return null;
+  }
+}
+
 function GaleriaPage() {
   const { user } = useSession();
   const { roles } = useMyRoles(user?.id);
@@ -274,7 +338,7 @@ function GaleriaPage() {
   }
   const eventsList = Array.from(albumNamesSet);
 
-  // Resumo completo de cada álbum (capa, descrição, fotos e contagem)
+  // Resumo completo de cada álbum (capa, descrição, fotos, data e contagem)
   const albumsSummary = eventsList.map((albumName) => {
     const albumMeta = savedAlbums.find(
       (a) => a.name.trim().toLowerCase() === albumName.toLowerCase(),
@@ -282,6 +346,7 @@ function GaleriaPage() {
     const albumPhotos = rawList.filter((p) => getPhotoAlbumName(p) === albumName);
     const coverFromPhotos = getAlbumCoverPhoto(albumPhotos);
     const coverImageUrl = coverFromPhotos?.image_url || albumMeta?.cover_url || null;
+    const formattedDate = formatAlbumDisplayDate(albumMeta?.event_date, albumMeta?.created_at);
 
     return {
       albumName,
@@ -290,22 +355,44 @@ function GaleriaPage() {
         name: albumName,
         description: null,
         cover_url: coverImageUrl,
+        event_date: null,
       },
       description: albumMeta?.description || null,
       photos: albumPhotos,
       coverPhoto: coverFromPhotos,
       coverImageUrl,
+      formattedDate,
       count: albumPhotos.length,
     };
+  });
+
+  // Ordenação conforme as datas: novos para cima e antigas para baixo
+  albumsSummary.sort((a, b) => {
+    const timeA = getAlbumEffectiveTimestamp(a.albumMeta, a.photos);
+    const timeB = getAlbumEffectiveTimestamp(b.albumMeta, b.photos);
+    return timeB - timeA;
   });
 
   const activeAlbumSummary = selectedEvent
     ? albumsSummary.find((a) => a.albumName === selectedEvent) || null
     : null;
 
-  // Fotos do álbum atualmente aberto
+  // Fotos do álbum atualmente aberto: capa primeiro, depois mais recentes para cima
   const filteredList = selectedEvent
-    ? rawList.filter((p) => getPhotoAlbumName(p) === selectedEvent)
+    ? rawList
+        .filter((p) => getPhotoAlbumName(p) === selectedEvent)
+        .sort((a, b) => {
+          const isCoverA = isPhotoAlbumCover(a);
+          const isCoverB = isPhotoAlbumCover(b);
+          if (isCoverA && !isCoverB) return -1;
+          if (!isCoverA && isCoverB) return 1;
+
+          const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          if (timeA !== timeB) return timeB - timeA; // Novos para cima, antigas para baixo
+
+          return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+        })
     : [];
 
   const isPhotoAlbumCover = (photo: GalleryPhotoItem): boolean => {
@@ -392,19 +479,36 @@ function GaleriaPage() {
                     Selecione um Álbum ({albumsSummary.length})
                   </h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Clique em qualquer álbum abaixo para abrir e ver todas as fotos dele.
+                    Ordenados pelas datas (mais novos em cima, mais antigas abaixo). Clique para
+                    abrir e ver todas as fotos.
                   </p>
                 </div>
               </div>
 
               {isDiretoria && (
-                <button
-                  type="button"
-                  onClick={handleOpenCreateAlbum}
-                  className="btn-stamp bg-rust text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
-                >
-                  <FolderPlus className="h-4 w-4" /> Criar Novo Álbum
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPhoto(null);
+                      setModalDefaultAlbum(eventsList[0] || null);
+                      setPhotoModalOpen(true);
+                    }}
+                    className="btn-stamp bg-amber text-ink text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
+                    title="Adicionar fotos a qualquer álbum já criado"
+                  >
+                    <Plus className="h-4 w-4" /> Adicionar Fotos em Álbum
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateAlbum}
+                    className="btn-stamp bg-rust text-cream text-xs inline-flex items-center gap-1.5 shadow-stamp hover:brightness-105"
+                    title="Criar um novo álbum de fotos"
+                  >
+                    <FolderPlus className="h-4 w-4" /> Criar Novo Álbum
+                  </button>
+                </div>
               )}
             </div>
 
@@ -432,7 +536,7 @@ function GaleriaPage() {
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {albumsSummary.map(
-                  ({ albumName, albumMeta, description, coverImageUrl, count }) => (
+                  ({ albumName, albumMeta, description, coverImageUrl, formattedDate, count }) => (
                     <div
                       key={albumName}
                       onClick={() => setSelectedEvent(albumName)}
@@ -477,8 +581,14 @@ function GaleriaPage() {
                           </span>
                         </div>
 
-                        {/* Título e Descrição do Álbum */}
+                        {/* Título, Data e Descrição do Álbum */}
                         <div className="pt-3 px-1">
+                          {formattedDate && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-condensed uppercase tracking-wider mb-1">
+                              <Calendar className="h-3.5 w-3.5 text-rust shrink-0" />
+                              <span className="font-semibold text-foreground">{formattedDate}</span>
+                            </div>
+                          )}
                           <h3 className="font-display text-2xl uppercase leading-tight group-hover:text-rust transition-colors">
                             {albumName}
                           </h3>
@@ -497,7 +607,7 @@ function GaleriaPage() {
                       {/* Rodapé do Card do Álbum */}
                       <div className="mt-4 pt-2.5 border-t border-border flex items-center justify-between gap-2 px-1">
                         <span className="font-condensed text-xs font-bold uppercase tracking-wider text-rust group-hover:underline">
-                          Ver fotos do álbum →
+                          Ver fotos →
                         </span>
 
                         {isDiretoria && (
@@ -520,7 +630,7 @@ function GaleriaPage() {
                                 handleOpenEditAlbum(albumMeta);
                               }}
                               className="rounded border border-ink/30 bg-muted p-1.5 text-xs hover:bg-amber hover:text-ink transition-colors"
-                              title="Editar nome, capa ou excluir álbum"
+                              title="Editar data, nome, capa ou excluir álbum"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
                             </button>
@@ -550,11 +660,17 @@ function GaleriaPage() {
                 </button>
 
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display text-xl uppercase leading-none">{selectedEvent}</h2>
                     <span className="rounded-sm bg-ink px-2 py-0.5 font-condensed text-[11px] font-bold uppercase text-amber">
                       {filteredList.length} {filteredList.length === 1 ? "foto" : "fotos"}
                     </span>
+                    {activeAlbumSummary?.formattedDate && (
+                      <span className="inline-flex items-center gap-1 rounded-sm border border-ink/30 bg-card px-2 py-0.5 font-condensed text-[11px] font-bold uppercase text-foreground">
+                        <Calendar className="h-3 w-3 text-rust" />
+                        {activeAlbumSummary.formattedDate}
+                      </span>
+                    )}
                   </div>
                   {activeAlbumSummary?.description && (
                     <p className="text-xs text-muted-foreground mt-0.5">

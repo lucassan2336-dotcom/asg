@@ -9,6 +9,8 @@ import {
   Star,
   Plus,
   FolderPlus,
+  FolderOpen,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -692,7 +694,15 @@ export function GalleryModal({
   const [title, setTitle] = useState(photo?.title || "");
   const [imageUrl, setImageUrl] = useState(photo?.image_url || "");
   const [caption, setCaption] = useState(photo?.caption || "");
-  const [eventName, setEventName] = useState(photo?.event_name || defaultEventName || "");
+  const initialAlbumName = photo?.event_name || defaultEventName || (existingAlbums[0] ?? "");
+  const [eventName, setEventName] = useState(initialAlbumName);
+  const [isCustomAlbum, setIsCustomAlbum] = useState(
+    Boolean(
+      initialAlbumName &&
+      existingAlbums.length > 0 &&
+      !existingAlbums.some((a) => a.toLowerCase() === initialAlbumName.trim().toLowerCase()),
+    ),
+  );
   const [published, setPublished] = useState(photo?.published ?? true);
   const [isCover, setIsCover] = useState<boolean>(Boolean(photo && (photo.sort_order ?? 0) < 0));
 
@@ -897,39 +907,63 @@ export function GalleryModal({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {/* Seleção de Álbum / Evento */}
-          <div>
-            <label className="block">
-              <span className="eyebrow">Álbum / Evento / Sessão</span>
-              <input
-                maxLength={120}
-                className="field mt-1"
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                placeholder="Ex: Sessão Noturna, Campeonato Street 2026"
-              />
-            </label>
-
-            {existingAlbums.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-condensed uppercase tracking-wider text-muted-foreground">
-                  Álbuns existentes:
-                </span>
-                {existingAlbums.map((alb) => (
-                  <button
-                    key={alb}
-                    type="button"
-                    onClick={() => setEventName(alb)}
-                    className={`rounded-sm border px-2 py-0.5 font-condensed text-xs uppercase transition-colors ${
-                      eventName.trim() === alb
-                        ? "border-ink bg-amber text-ink font-bold"
-                        : "border-ink/30 bg-secondary text-foreground hover:bg-muted"
-                    }`}
+          {/* Seleção de Álbum de Destino */}
+          <div className="space-y-2">
+            {existingAlbums.length > 0 ? (
+              <>
+                <label className="block">
+                  <span className="eyebrow flex items-center gap-1.5">
+                    <FolderOpen className="h-3.5 w-3.5 text-rust" /> Selecionar Álbum de Destino *
+                  </span>
+                  <select
+                    className="field mt-1 font-semibold"
+                    value={isCustomAlbum ? "__NOVO__" : eventName || existingAlbums[0] || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__NOVO__") {
+                        setIsCustomAlbum(true);
+                        setEventName("");
+                      } else {
+                        setIsCustomAlbum(false);
+                        setEventName(e.target.value);
+                      }
+                    }}
                   >
-                    {alb}
-                  </button>
-                ))}
-              </div>
+                    {existingAlbums.map((alb) => (
+                      <option key={alb} value={alb}>
+                        📁 {alb}
+                      </option>
+                    ))}
+                    <option value="__NOVO__">➕ Criar e Incluir em um Novo Álbum…</option>
+                  </select>
+                </label>
+
+                {isCustomAlbum && (
+                  <label className="block animate-in fade-in">
+                    <span className="eyebrow text-rust">Nome do Novo Álbum *</span>
+                    <input
+                      required
+                      maxLength={120}
+                      className="field mt-1 border-rust"
+                      value={eventName}
+                      onChange={(e) => setEventName(e.target.value)}
+                      placeholder="Ex: Sessão Noturna, Campeonato Street 2026..."
+                      autoFocus
+                    />
+                  </label>
+                )}
+              </>
+            ) : (
+              <label className="block">
+                <span className="eyebrow">Nome do Álbum *</span>
+                <input
+                  required
+                  maxLength={120}
+                  className="field mt-1"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  placeholder="Ex: Sessão Noturna, Campeonato Street 2026..."
+                />
+              </label>
             )}
           </div>
 
@@ -1222,6 +1256,10 @@ export function AlbumFormModal({
   const deleteAlbumMutation = useDeleteGalleryAlbum();
 
   const [name, setName] = useState(album?.name || "");
+  const [eventDate, setEventDate] = useState<string>(
+    album?.event_date ||
+      (album?.created_at ? album.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10)),
+  );
   const [description, setDescription] = useState(album?.description || "");
   const [coverUrl, setCoverUrl] = useState(album?.cover_url || "");
   const [extraPhotos, setExtraPhotos] = useState<PendingAlbumPhoto[]>([]);
@@ -1339,6 +1377,7 @@ export function AlbumFormModal({
         name: cleanName,
         description: description.trim() || null,
         coverUrl: coverUrl || null,
+        eventDate: eventDate || null,
         initialPhotos,
       });
       toast.success(album ? "Álbum atualizado com sucesso!" : `Álbum "${cleanName}" criado!`);
@@ -1388,17 +1427,32 @@ export function AlbumFormModal({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <label className="block">
-            <span className="eyebrow">Nome do Álbum *</span>
-            <input
-              required
-              maxLength={120}
-              className="field mt-1"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Campeonato Street 2026, Sessão de Domingo, Oficina Social..."
-            />
-          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block">
+              <span className="eyebrow">Nome do Álbum *</span>
+              <input
+                required
+                maxLength={120}
+                className="field mt-1"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Campeonato Street 2026, Sessão..."
+              />
+            </label>
+
+            <label className="block">
+              <span className="eyebrow flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 text-rust" /> Data do Álbum / Evento *
+              </span>
+              <input
+                type="date"
+                required
+                className="field mt-1 font-semibold"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+              />
+            </label>
+          </div>
 
           <label className="block">
             <span className="eyebrow">Descrição do Álbum (Opcional)</span>
@@ -1471,11 +1525,12 @@ export function AlbumFormModal({
             )}
           </div>
 
-          {/* Seleção opcional de fotos adicionais para o álbum já na criação */}
+          {/* Seleção de fotos para o álbum (criação ou inclusão em álbum já existente) */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="eyebrow">
-                Fotos do Álbum ({extraPhotos.length} selecionada
+                {album ? "Adicionar Mais Fotos a este Álbum" : "Fotos do Álbum"} (
+                {extraPhotos.length} nova{extraPhotos.length === 1 ? "" : "s"} selecionada
                 {extraPhotos.length === 1 ? "" : "s"})
               </span>
               <button
@@ -1484,7 +1539,8 @@ export function AlbumFormModal({
                 onClick={() => extraPhotosInputRef.current?.click()}
                 className="btn-stamp bg-amber text-ink text-xs inline-flex items-center gap-1 px-2.5 py-1"
               >
-                <Plus className="h-3.5 w-3.5" /> Selecionar Mais Fotos para o Álbum
+                <Plus className="h-3.5 w-3.5" />{" "}
+                {album ? "Selecionar Fotos para Adicionar" : "Selecionar Mais Fotos para o Álbum"}
               </button>
             </div>
 
