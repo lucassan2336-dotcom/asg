@@ -92,6 +92,13 @@
       "when": 1794805689839,
       "tag": "0012_restrict_scoring_config_read",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795733135869,
+      "tag": "0013_restrict_site_content_public_read",
+      "breakpoints": true
     }
   ]
 }
