@@ -115,6 +115,7 @@ export interface GalleryPhotoItem {
   event_name?: string | null;
   published: boolean;
   sort_order: number;
+  created_at?: string | null;
 }
 
 export interface GalleryAlbumItem {
